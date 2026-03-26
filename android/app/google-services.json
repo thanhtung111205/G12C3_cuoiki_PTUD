@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "288105983356",
+    "project_id": "fir-ck-20a28",
+    "storage_bucket": "fir-ck-20a28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288105983356:android:0ef973ce0ad48aa5e6c8f9",
+        "android_client_info": {
+          "package_name": "com.example.cki_demo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjg5S64uypaD0Qo8YWPTe8hUz0zqXIbNE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
