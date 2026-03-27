@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'package:webfeed_plus/webfeed_plus.dart';
 import 'package:html/parser.dart';
-import '../models/article.dart';
+import '../models/article_model.dart';
 
 class RssService {
   static const String feedUrl = 'https://feeds.bbci.co.uk/news/world/rss.xml'; // Using BBC News as VOA might be blocked in some regions

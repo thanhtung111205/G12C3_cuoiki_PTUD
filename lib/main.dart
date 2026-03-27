@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'screens/news_feed_screen.dart';
+import 'screens/news/news_tabs_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {

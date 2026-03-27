@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../models/article.dart';
-import '../services/rss_service.dart';
+import '../../models/article_model.dart';
+import '../../services/rss_service.dart';
 import 'article_detail_screen.dart';
-import 'nearby_map_screen.dart';
-import 'auth_screen.dart';
+import '../social/nearby_map_screen.dart';
+import '../auth/login_register_screen.dart';
 
 class NewsFeedScreen extends StatefulWidget {
   const NewsFeedScreen({super.key});
