@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/dictionary_entry.dart';
+import '../models/dictionary_entry_model.dart';
 
 class WordNotFoundException implements Exception {
   final String message;

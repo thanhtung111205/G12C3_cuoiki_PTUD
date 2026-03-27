@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import '../models/article.dart';
-import '../models/dictionary_entry.dart';
-import '../services/dictionary_service.dart';
+import '../../models/article_model.dart';
+import '../../models/dictionary_entry_model.dart';
+import '../../services/dictionary_service.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
