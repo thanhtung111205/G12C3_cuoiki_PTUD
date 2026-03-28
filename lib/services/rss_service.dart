@@ -1,41 +1,85 @@
 import 'package:http/http.dart' as http;
 import 'package:webfeed_plus/webfeed_plus.dart';
 import 'package:html/parser.dart';
+
 import '../models/article_model.dart';
 
+/// Fetches and parses articles from a real English-language RSS feed.
+/// The BBC World News feed is used as the default source because it is
+/// reliably accessible and returns rich media metadata.
 class RssService {
-  static const String feedUrl = 'https://feeds.bbci.co.uk/news/world/rss.xml'; // Using BBC News as VOA might be blocked in some regions
+  static const String _feedUrl =
+      'https://feeds.bbci.co.uk/news/world/rss.xml';
 
-  Future<List<Article>> fetchArticles() async {
+  /// Primary entry point used by the News screen.
+  /// Returns a list of [Article] objects parsed from the RSS XML.
+  Future<List<Article>> fetchNews() => _fetch(_feedUrl);
+
+  /// Backward-compatible alias kept for widgets that already call this.
+  Future<List<Article>> fetchArticles() => _fetch(_feedUrl);
+
+  // ── Internal implementation ──────────────────────────────────────────────
+
+  Future<List<Article>> _fetch(String url) async {
+    final http.Response response;
+
     try {
-      final response = await http.get(Uri.parse(feedUrl));
-
-      if (response.statusCode == 200) {
-        final rssFeed = RssFeed.parse(response.body);
-        
-        return rssFeed.items?.map((item) {
-          // Strip HTML from description for a cleaner preview
-          final document = parse(item.description ?? '');
-          final plainDescription = parse(document.body?.text ?? '').documentElement?.text ?? '';
-          
-          // Using description as content if full content is not consistently available
-          final fullContent = item.description ?? '';
-          final contentDocument = parse(fullContent);
-          final plainContent = parse(contentDocument.body?.text ?? '').documentElement?.text ?? '';
-
-          return Article(
-            title: item.title ?? 'No Title',
-            description: plainDescription,
-            pubDate: item.pubDate?.toString() ?? 'Unknown date',
-            link: item.link ?? '',
-            content: plainContent,
-          );
-        }).toList() ?? [];
-      } else {
-        throw Exception('Failed to load RSS feed: ${response.statusCode}');
-      }
+      response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
-      throw Exception('Error fetching RSS feed: $e');
+      throw Exception('Network error while fetching RSS feed: $e');
     }
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'RSS feed returned HTTP ${response.statusCode}');
+    }
+
+    final RssFeed rssFeed;
+    try {
+      rssFeed = RssFeed.parse(response.body);
+    } catch (e) {
+      throw Exception('Failed to parse RSS XML: $e');
+    }
+
+    final List<RssItem> items = rssFeed.items ?? [];
+    if (items.isEmpty) return [];
+
+    final String feedTitle = rssFeed.title ?? 'RSS Feed';
+
+    return items.map((item) => _mapItem(item, feedTitle)).toList();
+  }
+
+  Article _mapItem(RssItem item, String feedTitle) {
+    // Strip HTML tags from description for a clean text preview.
+    final String rawDescription = item.description ?? '';
+    final String plainDescription =
+        parse(parse(rawDescription).body?.text ?? '').documentElement?.text ??
+            '';
+
+    final String title = item.title ?? 'No Title';
+    final String link = item.link?.toString() ?? '';
+    final String articleId =
+        item.guid ?? (link.isNotEmpty ? link : title);
+
+    // BBC attaches images via <media:content>; fall back to null if absent.
+    String? imageUrl;
+    final media = item.media;
+    if (media != null &&
+        media.contents != null &&
+        media.contents!.isNotEmpty) {
+      imageUrl = media.contents!.first.url;
+    }
+
+    return Article(
+      articleId: articleId,
+      title: title,
+      source: feedTitle,
+      link: link,
+      pubDate: item.pubDate ?? DateTime.now(),
+      imageUrl: imageUrl,
+      description: plainDescription,
+    );
   }
 }

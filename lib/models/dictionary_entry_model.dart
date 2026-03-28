@@ -5,11 +5,49 @@ class DictionaryEntry {
   final String definition;
   final String audioUrl;
 
-  DictionaryEntry({
+  const DictionaryEntry({
     required this.word,
-    required this.phonetic,
-    required this.partOfSpeech,
-    required this.definition,
-    required this.audioUrl,
+    this.phonetic = '',
+    this.partOfSpeech = '',
+    this.definition = '',
+    this.audioUrl = '',
   });
+
+  DictionaryEntry copyWith({
+    String? word,
+    String? phonetic,
+    String? partOfSpeech,
+    String? definition,
+    String? audioUrl,
+  }) {
+    return DictionaryEntry(
+      word: word ?? this.word,
+      phonetic: phonetic ?? this.phonetic,
+      partOfSpeech: partOfSpeech ?? this.partOfSpeech,
+      definition: definition ?? this.definition,
+      audioUrl: audioUrl ?? this.audioUrl,
+    );
+  }
+
+  factory DictionaryEntry.fromMap(Map<String, dynamic> map) {
+    return DictionaryEntry(
+      word: map['word'] as String? ?? '',
+      phonetic: map['phonetic'] as String? ?? '',
+      partOfSpeech: map['partOfSpeech'] as String? ?? '',
+      definition: map['definition'] as String? ?? '',
+      audioUrl: map['audioUrl'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'word': word,
+      'phonetic': phonetic,
+      'partOfSpeech': partOfSpeech,
+      'definition': definition,
+      'audioUrl': audioUrl,
+    };
+  }
 }
+
+typedef DictionaryEntryModel = DictionaryEntry;

@@ -23,10 +23,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
   Position? _currentPosition;
 
   StreamSubscription<Position>? _positionSubscription;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-      _usersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSubscription;
 
-    final List<Marker> _nearbyMarkers = <Marker>[];
+  final List<Marker> _nearbyMarkers = <Marker>[];
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -107,7 +106,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
         });
       } on TimeoutException catch (_) {
         // Emulator or device không trả về vị trí nhanh — fallback sang demo location
-        debugPrint('Geolocator.getCurrentPosition timed out — using demo location');
+        debugPrint(
+          'Geolocator.getCurrentPosition timed out — using demo location',
+        );
         _usingDemoMarkers = true;
         // đặt default location (ví dụ trung tâm Hà Nội) để map hiển thị
         _currentPosition = Position(
@@ -138,33 +139,37 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
         distanceFilter: 10,
       );
 
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: locationSettings,
-      ).listen((Position newPosition) async {
-        _currentPosition = newPosition;
-        await _updateUserLocationInFirestore(newPosition);
+      _positionSubscription =
+          Geolocator.getPositionStream(
+            locationSettings: locationSettings,
+          ).listen((Position newPosition) async {
+            _currentPosition = newPosition;
+            await _updateUserLocationInFirestore(newPosition);
 
-        _mapController.move(
-          latlng.LatLng(newPosition.latitude, newPosition.longitude),
-          _initialZoom,
-        );
+            _mapController.move(
+              latlng.LatLng(newPosition.latitude, newPosition.longitude),
+              _initialZoom,
+            );
 
-        setState(() {
-          // Cập nhật để tính lại khoảng cách và vẽ marker nếu cần.
-        });
-      });
+            setState(() {
+              // Cập nhật để tính lại khoảng cách và vẽ marker nếu cần.
+            });
+          });
 
       // 5. Lắng nghe dữ liệu realtime từ Firestore
       _usersSubscription = _firestore
           .collection('users')
           .snapshots()
-          .listen(_onUsersSnapshot, onError: (e) {
-        setState(() {
-          _firestoreError = e?.toString();
-          _usingDemoMarkers = true;
-          _generateDemoMarkersIfNeeded();
-        });
-      });
+          .listen(
+            _onUsersSnapshot,
+            onError: (e) {
+              setState(() {
+                _firestoreError = e?.toString();
+                _usingDemoMarkers = true;
+                _generateDemoMarkersIfNeeded();
+              });
+            },
+          );
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -175,22 +180,20 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   Future<void> _updateUserLocationInFirestore(Position position) async {
     try {
-      await _firestore.collection('users').doc(widget.currentUserId).set(
-        <String, dynamic>{
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'last_updated': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await _firestore
+          .collection('users')
+          .doc(widget.currentUserId)
+          .set(<String, dynamic>{
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'last_updated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (_) {
       // Có thể log lỗi nếu cần, nhưng không chặn UI.
     }
   }
 
-  void _onUsersSnapshot(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-  ) {
+  void _onUsersSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
     if (_currentPosition == null) {
       return;
     }
@@ -213,12 +216,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
         continue;
       }
 
-      final distance = Geolocator.distanceBetween(
-        myLat,
-        myLng,
-        lat,
-        lng,
-      );
+      final distance = Geolocator.distanceBetween(myLat, myLng, lat, lng);
 
       if (distance <= _nearbyRadiusMeters) {
         final String name = (data['name'] as String?) ?? 'Bạn học gần đây';
@@ -232,16 +230,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
           alignment: Alignment.bottomCenter,
           child: GestureDetector(
             onTap: () {
-              _showUserDetailBottomSheet(
-                name: name,
-                studyStatus: studyStatus,
-              );
+              _showUserDetailBottomSheet(name: name, studyStatus: studyStatus);
             },
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.red,
-              size: 36,
-            ),
+            child: const Icon(Icons.location_on, color: Colors.red, size: 36),
           ),
         );
 
@@ -273,24 +264,28 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     final statuses = <String>[
       'Ôn thi Toán',
       'Luyện nói Tiếng Anh',
-      'Làm bài tập Lập trình'
+      'Làm bài tập Lập trình',
     ];
 
     for (var i = 0; i < offsets.length; i++) {
-      demo.add(Marker(
-        point: latlng.LatLng(lat + offsets[i], lng + offsets[(i + 1) % offsets.length]),
-        width: 40,
-        height: 40,
-        alignment: Alignment.bottomCenter,
-        child: GestureDetector(
-          onTap: () => _showUserDetailBottomSheet(name: names[i], studyStatus: statuses[i]),
-          child: const Icon(
-            Icons.location_on,
-            color: Colors.green,
-            size: 36,
+      demo.add(
+        Marker(
+          point: latlng.LatLng(
+            lat + offsets[i],
+            lng + offsets[(i + 1) % offsets.length],
+          ),
+          width: 40,
+          height: 40,
+          alignment: Alignment.bottomCenter,
+          child: GestureDetector(
+            onTap: () => _showUserDetailBottomSheet(
+              name: names[i],
+              studyStatus: statuses[i],
+            ),
+            child: const Icon(Icons.location_on, color: Colors.green, size: 36),
           ),
         ),
-      ));
+      );
     }
 
     setState(() {
@@ -324,10 +319,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                studyStatus,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(studyStatus, style: const TextStyle(fontSize: 14)),
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
@@ -367,10 +359,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                ),
+                Text(_errorMessage!, textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _initLocationAndStreams,
@@ -389,9 +378,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
           title: const Text('Nearby Study Partners'),
           centerTitle: true,
         ),
-        body: const Center(
-          child: Text('Không thể lấy vị trí hiện tại.'),
-        ),
+        body: const Center(child: Text('Không thể lấy vị trí hiện tại.')),
       );
     }
 
@@ -452,7 +439,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                 subdomains: const <String>['a', 'b', 'c', 'd'],
                 tileProvider: NetworkTileProvider(
                   headers: {
-                    'User-Agent': 'cki_demo/1.0 (contact: your-email@example.com)'
+                    'User-Agent':
+                        'cki_demo/1.0 (contact: your-email@example.com)',
                   },
                 ),
               ),
@@ -503,9 +491,14 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
             top: 72,
             child: Card(
               color: Colors.white.withOpacity(0.9),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -515,7 +508,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Cập nhật: ${_currentPosition!.timestamp?.toLocal().toString().split('.').first ?? ''}',
+                      'Cập nhật: ${_currentPosition!.timestamp.toLocal().toString().split('.').first}',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
@@ -538,22 +531,31 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
       _currentPosition = pos;
       // update firestore & map
       await _updateUserLocationInFirestore(pos);
-      _mapController.move(latlng.LatLng(pos.latitude, pos.longitude), _initialZoom);
+      _mapController.move(
+        latlng.LatLng(pos.latitude, pos.longitude),
+        _initialZoom,
+      );
 
       if (mounted) {
         setState(() {
           _isLoading = false;
           _usingDemoMarkers = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Vị trí hiện tại: ${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}'),
-          duration: const Duration(seconds: 4),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Vị trí hiện tại: ${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể lấy vị trí: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể lấy vị trí: $e')));
       }
     }
   }
