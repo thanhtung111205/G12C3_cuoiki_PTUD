@@ -6,6 +6,7 @@ import '../../models/article_model.dart';
 import '../news/article_detail_screen.dart';
 import '../news/news_tabs_screen.dart';
 import '../profile/profile_settings_screen.dart';
+import '../social/nearby_map_screen.dart';
 import '../../utils/app_colors.dart';
 import 'data/home_mock_data.dart';
 import 'widgets/home_sections.dart';
@@ -48,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomTabDestination(int index) {
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
     switch (index) {
       case 1:
         return const _ComingSoonScreen(
@@ -62,10 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
           description: 'Tính năng Bạn học đang được phát triển.',
         );
       case 4:
-        return const _ComingSoonScreen(
-          title: 'Bản đồ',
-          description: 'Tính năng Bản đồ Bạn học đang được phát triển.',
-        );
+        return currentUserId == null
+            ? const _ComingSoonScreen(
+                title: 'Bản đồ',
+                description: 'Không xác định được người dùng hiện tại.',
+              )
+            : NearbyMapScreen(currentUserId: currentUserId);
       case 5:
         return const ProfileSettingsScreen();
       default:
@@ -85,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onFeatureTap(CoreFeature feature) {
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final Widget destination;
     switch (feature.targetScreen) {
       case 'NewsScreen':
@@ -94,6 +99,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'OcrScanScreen':
       case 'FlashcardScreen':
       case 'StudyMapScreen':
+        destination = currentUserId == null
+            ? const _ComingSoonScreen(
+                title: 'Bản đồ Bạn học',
+                description: 'Không xác định được người dùng hiện tại.',
+              )
+            : NearbyMapScreen(currentUserId: currentUserId);
+        break;
       case 'SocialScreen':
         destination = _ComingSoonScreen(
           title: feature.label,

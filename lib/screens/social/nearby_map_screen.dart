@@ -6,10 +6,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 
+import '../../models/nearby_study_peer.dart';
+import '../../services/location_service.dart';
+import '../../utils/app_colors.dart';
+import 'chat_room_screen.dart';
+
 class NearbyMapScreen extends StatefulWidget {
   const NearbyMapScreen({super.key, required this.currentUserId});
 
-  /// uid của user hiện tại, trùng với document id trong collection `users`.
   final String currentUserId;
 
   @override
@@ -17,546 +21,906 @@ class NearbyMapScreen extends StatefulWidget {
 }
 
 class _NearbyMapScreenState extends State<NearbyMapScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const double _nearbyRadiusMeters = 2000;
+  static const double _initialZoom = 16;
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocationService _locationService = const LocationService();
   final MapController _mapController = MapController();
-  Position? _currentPosition;
 
   StreamSubscription<Position>? _positionSubscription;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _visibleUsersSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _currentUserSubscription;
 
-  final List<Marker> _nearbyMarkers = <Marker>[];
+  Position? _currentPosition;
+  List<NearbyStudyPeer> _visiblePeers = <NearbyStudyPeer>[];
+  List<NearbyStudyPeer> _nearbyPeers = <NearbyStudyPeer>[];
 
   bool _isLoading = true;
+  bool _isLocationVisible = true;
+  bool _isSavingVisibility = false;
+  bool _isMapReady = false;
   String? _errorMessage;
-  String? _firestoreError;
-
-  // Demo markers used when Firestore is unavailable
-  bool _usingDemoMarkers = false;
-
-  static const double _nearbyRadiusMeters = 2000; // 2km
-  static const double _initialZoom = 15;
+  String? _statusMessage;
 
   @override
   void initState() {
     super.initState();
-    _initLocationAndStreams();
+    _bootstrapNearbyMap();
   }
 
   @override
   void dispose() {
     _positionSubscription?.cancel();
-    _usersSubscription?.cancel();
+    _visibleUsersSubscription?.cancel();
+    _currentUserSubscription?.cancel();
     super.dispose();
   }
 
-  Future<void> _initLocationAndStreams() async {
-    setState(() {
+  Future<void> _bootstrapNearbyMap() async {
+    _safeSetState(() {
       _isLoading = true;
       _errorMessage = null;
+      _statusMessage = null;
     });
 
-    try {
-      // 1. Kiểm tra dịch vụ vị trí
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Dịch vụ vị trí đang tắt. Vui lòng bật GPS/location trên thiết bị.';
-        });
-        return;
-      }
-
-      // 2. Kiểm tra & xin quyền truy cập vị trí
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.denied) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Ứng dụng không có quyền truy cập vị trí. Vui lòng cấp quyền trong phần Cài đặt.';
-        });
-        return;
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Quyền vị trí đã bị từ chối vĩnh viễn. Vui lòng vào Cài đặt hệ thống để cho phép lại.';
-        });
-        return;
-      }
-
-      // 3. Lấy vị trí hiện tại lần đầu (có timeout để tránh treo trên emulator không có GPS)
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        ).timeout(const Duration(seconds: 10));
-
-        _currentPosition = position;
-        await _updateUserLocationInFirestore(position);
-
-        setState(() {
-          _isLoading = false;
-        });
-      } on TimeoutException catch (_) {
-        // Emulator or device không trả về vị trí nhanh — fallback sang demo location
-        debugPrint(
-          'Geolocator.getCurrentPosition timed out — using demo location',
-        );
-        _usingDemoMarkers = true;
-        // đặt default location (ví dụ trung tâm Hà Nội) để map hiển thị
-        _currentPosition = Position(
-          longitude: 105.8342,
-          latitude: 21.0278,
-          timestamp: DateTime.now(),
-          accuracy: 0.0,
-          altitude: 0.0,
-          heading: 0.0,
-          speed: 0.0,
-          speedAccuracy: 0.0,
-          // required by Position constructor
-          altitudeAccuracy: 0.0,
-          headingAccuracy: 0.0,
-        );
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        // tạo demo markers ngay
-        _generateDemoMarkersIfNeeded();
-      }
-
-      // 4. Lắng nghe stream vị trí với khoảng cách tối thiểu 10m
-      const locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 10,
-      );
-
-      _positionSubscription =
-          Geolocator.getPositionStream(
-            locationSettings: locationSettings,
-          ).listen((Position newPosition) async {
-            _currentPosition = newPosition;
-            await _updateUserLocationInFirestore(newPosition);
-
-            _mapController.move(
-              latlng.LatLng(newPosition.latitude, newPosition.longitude),
-              _initialZoom,
-            );
-
-            setState(() {
-              // Cập nhật để tính lại khoảng cách và vẽ marker nếu cần.
-            });
-          });
-
-      // 5. Lắng nghe dữ liệu realtime từ Firestore
-      _usersSubscription = _firestore
-          .collection('users')
-          .snapshots()
-          .listen(
-            _onUsersSnapshot,
-            onError: (e) {
-              setState(() {
-                _firestoreError = e?.toString();
-                _usingDemoMarkers = true;
-                _generateDemoMarkersIfNeeded();
-              });
-            },
-          );
-    } catch (e) {
-      setState(() {
+    final access = await _locationService.ensureLocationAccess();
+    if (!access.isGranted) {
+      _safeSetState(() {
         _isLoading = false;
-        _errorMessage = 'Đã xảy ra lỗi khi khởi tạo vị trí: $e';
+        _errorMessage = access.message;
+      });
+      return;
+    }
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      _currentPosition = position;
+      await _publishCurrentLocation(position);
+      _bindRealtimeStreams();
+      _recalculateNearbyPeers();
+
+      _safeSetState(() {
+        _isLoading = false;
+      });
+      _moveMapToCurrentPosition();
+    } catch (error) {
+      _safeSetState(() {
+        _isLoading = false;
+        _errorMessage =
+            'Không thể lấy vị trí hiện tại. Vui lòng kiểm tra GPS và thử lại.\n$error';
       });
     }
   }
 
-  Future<void> _updateUserLocationInFirestore(Position position) async {
+  void _bindRealtimeStreams() {
+    _currentUserSubscription = _firestore
+        .collection('users')
+        .doc(widget.currentUserId)
+        .snapshots()
+        .listen((snapshot) {
+          final data = snapshot.data();
+          if (data == null) return;
+
+          final bool visible = (data['isLocationVisible'] as bool?) ?? true;
+          if (visible != _isLocationVisible) {
+            _safeSetState(() {
+              _isLocationVisible = visible;
+            });
+          }
+        });
+
+    _visibleUsersSubscription = _firestore
+        .collection('users')
+        .where('isLocationVisible', isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+          final List<NearbyStudyPeer> peers = snapshot.docs
+              .where((doc) => doc.id != widget.currentUserId)
+              .map(_peerFromDocument)
+              .whereType<NearbyStudyPeer>()
+              .toList();
+
+          _visiblePeers = peers;
+          _recalculateNearbyPeers();
+        }, onError: (error) {
+          _safeSetState(() {
+            _statusMessage = 'Không thể đồng bộ danh sách bạn học gần đây: $error';
+          });
+        });
+
+    _positionSubscription = _locationService.watchPosition().listen((position) async {
+      _currentPosition = position;
+      await _publishCurrentLocation(position);
+      _recalculateNearbyPeers();
+
+      _moveMapToCurrentPosition();
+    });
+  }
+
+  void _moveMapToCurrentPosition() {
+    final Position? currentPosition = _currentPosition;
+    if (currentPosition == null || !_isMapReady) return;
+
+    _mapController.move(
+      latlng.LatLng(currentPosition.latitude, currentPosition.longitude),
+      _initialZoom,
+    );
+  }
+
+  NearbyStudyPeer? _peerFromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final double? latitude = _readDouble(data['latitude']);
+    final double? longitude = _readDouble(data['longitude']);
+    if (latitude == null || longitude == null) return null;
+
+    return NearbyStudyPeer(
+      id: doc.id,
+      displayName: _readUserName(data),
+      avatarUrl:
+          _readString(data['avatarUrl']) ?? _readString(data['photoUrl']),
+      studyStatus: _readStudyStatus(data),
+      latitude: latitude,
+      longitude: longitude,
+      distanceMeters: 0,
+    );
+  }
+
+  String _readUserName(Map<String, dynamic> data) {
+    final String? displayName = _readString(data['displayName']);
+    final String? legacyName = _readString(data['name']);
+    final String? email = _readString(data['email']);
+
+    if (displayName?.isNotEmpty == true) return displayName!;
+    if (legacyName?.isNotEmpty == true) return legacyName!;
+    if (email?.contains('@') == true) return email!.split('@').first;
+    return 'Bạn học gần đây';
+  }
+
+  String _readStudyStatus(Map<String, dynamic> data) {
+    final String? studyStatus = _readString(data['study_status']);
+    final String? legacyStatus = _readString(data['studyStatus']);
+    final String? status = _readString(data['status']);
+
+    if (studyStatus?.isNotEmpty == true) return studyStatus!;
+    if (legacyStatus?.isNotEmpty == true) return legacyStatus!;
+    if (status?.isNotEmpty == true) return status!;
+    return 'Đang online';
+  }
+
+  String? _readString(dynamic value) {
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+    return null;
+  }
+
+  double? _readDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return null;
+  }
+
+  Future<void> _publishCurrentLocation(Position position) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(widget.currentUserId)
-          .set(<String, dynamic>{
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-            'last_updated': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+      await _firestore.collection('users').doc(widget.currentUserId).set(
+        <String, dynamic>{
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'lastLocation': GeoPoint(position.latitude, position.longitude),
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
     } catch (_) {
-      // Có thể log lỗi nếu cần, nhưng không chặn UI.
+      // Firestore write failures should not block map rendering.
     }
   }
 
-  void _onUsersSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
-    if (_currentPosition == null) {
-      return;
-    }
+  void _recalculateNearbyPeers() {
+    final Position? currentPosition = _currentPosition;
+    if (currentPosition == null) return;
 
-    final List<Marker> newMarkers = <Marker>[];
-    final double myLat = _currentPosition!.latitude;
-    final double myLng = _currentPosition!.longitude;
+    final List<NearbyStudyPeer> peers = <NearbyStudyPeer>[];
 
-    for (final doc in snapshot.docs) {
-      if (doc.id == widget.currentUserId) {
-        // Bỏ qua chính mình
-        continue;
-      }
-
-      final data = doc.data();
-      final double? lat = (data['latitude'] as num?)?.toDouble();
-      final double? lng = (data['longitude'] as num?)?.toDouble();
-
-      if (lat == null || lng == null) {
-        continue;
-      }
-
-      final distance = Geolocator.distanceBetween(myLat, myLng, lat, lng);
+    for (final peer in _visiblePeers) {
+      final double distance = _locationService.distanceBetween(
+        currentPosition.latitude,
+        currentPosition.longitude,
+        peer.latitude,
+        peer.longitude,
+      );
 
       if (distance <= _nearbyRadiusMeters) {
-        final String name = (data['name'] as String?) ?? 'Bạn học gần đây';
-        final String studyStatus =
-            (data['study_status'] as String?) ?? 'Chưa có trạng thái học tập';
-
-        final marker = Marker(
-          point: latlng.LatLng(lat, lng),
-          width: 40,
-          height: 40,
-          alignment: Alignment.bottomCenter,
-          child: GestureDetector(
-            onTap: () {
-              _showUserDetailBottomSheet(name: name, studyStatus: studyStatus);
-            },
-            child: const Icon(Icons.location_on, color: Colors.red, size: 36),
-          ),
-        );
-
-        newMarkers.add(marker);
+        peers.add(peer.copyWith(distanceMeters: distance));
       }
     }
 
-    setState(() {
-      _nearbyMarkers
-        ..clear()
-        ..addAll(newMarkers);
-      // If no real markers and Firestore errored, generate demo markers
-      if (_nearbyMarkers.isEmpty && _usingDemoMarkers) {
-        _generateDemoMarkersIfNeeded();
-      }
+    peers.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+
+    _safeSetState(() {
+      _nearbyPeers = peers;
     });
   }
 
-  void _generateDemoMarkersIfNeeded() {
-    if (_currentPosition == null) return;
-    if (!_usingDemoMarkers) return;
-    // create 3 demo users around current position (~within 200-1000m)
-    final lat = _currentPosition!.latitude;
-    final lng = _currentPosition!.longitude;
-    final List<Marker> demo = <Marker>[];
+  Future<void> _toggleVisibility(bool isVisible) async {
+    _safeSetState(() {
+      _isLocationVisible = isVisible;
+      _isSavingVisibility = true;
+      _statusMessage = isVisible
+          ? 'Đang bật hiển thị vị trí trên bản đồ.'
+          : 'Đang ẩn vị trí của bạn khỏi bản đồ.';
+    });
 
-    final offsets = <double>[0.0015, -0.0012, 0.0009];
-    final names = <String>['Demo A', 'Demo B', 'Demo C'];
-    final statuses = <String>[
-      'Ôn thi Toán',
-      'Luyện nói Tiếng Anh',
-      'Làm bài tập Lập trình',
-    ];
-
-    for (var i = 0; i < offsets.length; i++) {
-      demo.add(
-        Marker(
-          point: latlng.LatLng(
-            lat + offsets[i],
-            lng + offsets[(i + 1) % offsets.length],
-          ),
-          width: 40,
-          height: 40,
-          alignment: Alignment.bottomCenter,
-          child: GestureDetector(
-            onTap: () => _showUserDetailBottomSheet(
-              name: names[i],
-              studyStatus: statuses[i],
-            ),
-            child: const Icon(Icons.location_on, color: Colors.green, size: 36),
-          ),
-        ),
+    try {
+      await _firestore.collection('users').doc(widget.currentUserId).set(
+        <String, dynamic>{
+          'isLocationVisible': isVisible,
+          'visibilityUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
       );
+    } catch (error) {
+      _safeSetState(() {
+        _isLocationVisible = !isVisible;
+        _statusMessage = 'Không thể cập nhật trạng thái hiển thị: $error';
+      });
+    } finally {
+      _safeSetState(() {
+        _isSavingVisibility = false;
+      });
     }
-
-    setState(() {
-      _nearbyMarkers
-        ..clear()
-        ..addAll(demo);
-    });
   }
 
-  void _showUserDetailBottomSheet({
-    required String name,
-    required String studyStatus,
-  }) {
+  void _safeSetState(VoidCallback callback) {
+    if (!mounted) return;
+    setState(callback);
+  }
+
+  void _openPeerSheet(NearbyStudyPeer peer) {
+    final double? distance = _currentPosition == null
+        ? null
+        : _locationService.distanceBetween(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+            peer.latitude,
+            peer.longitude,
+          );
+
     showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _PeerBottomSheet(
+          peer: peer,
+          distanceMeters: distance,
+          onStartChat: () {
+            Navigator.of(sheetContext).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ChatRoomScreen(
+                  currentUserId: widget.currentUserId,
+                  partnerId: peer.id,
+                  partnerName: peer.displayName,
+                  partnerAvatarUrl: peer.avatarUrl,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(studyStatus, style: const TextStyle(fontSize: 14)),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Đóng'),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildMarker({
+    required Color color,
+    required double size,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.28),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: size * 0.58),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Nearby Study Partners'),
-          centerTitle: true,
-        ),
-        body: const Center(child: CircularProgressIndicator()),
+      return _buildFullScreenState(
+        title: 'Đang khởi tạo Bản đồ Bạn học ở gần',
+        message: 'Đang lấy quyền vị trí và cập nhật dữ liệu xung quanh bạn.',
+        child: const CircularProgressIndicator(),
       );
     }
 
     if (_errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Nearby Study Partners'),
-          centerTitle: true,
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(_errorMessage!, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _initLocationAndStreams,
-                  child: const Text('Thử lại'),
-                ),
-              ],
-            ),
+      final bool gpsIssue = _errorMessage!.contains('GPS');
+
+      return _buildFullScreenState(
+        title: 'Không thể mở bản đồ',
+        message: _errorMessage!,
+        child: ElevatedButton(
+          onPressed: () async {
+            if (gpsIssue) {
+              await _locationService.openLocationSettings();
+            } else {
+              await _locationService.openAppSettings();
+            }
+            await _bootstrapNearbyMap();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.deepPurple,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           ),
+          child: Text(gpsIssue ? 'Mở cài đặt GPS' : 'Mở cài đặt quyền'),
         ),
       );
     }
 
-    if (_currentPosition == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Nearby Study Partners'),
-          centerTitle: true,
-        ),
-        body: const Center(child: Text('Không thể lấy vị trí hiện tại.')),
-      );
-    }
-
-    final List<Marker> allMarkers = <Marker>[
-      // Marker đại diện cho vị trí của chính người dùng.
+    final List<Marker> markers = <Marker>[
       Marker(
         point: latlng.LatLng(
           _currentPosition!.latitude,
           _currentPosition!.longitude,
         ),
-        width: 40,
-        height: 40,
-        alignment: Alignment.bottomCenter,
-        child: const Icon(
-          Icons.person_pin_circle,
-          color: Colors.blue,
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        child: _buildMarker(
+          color: AppColors.deepPurple,
           size: 38,
+          icon: Icons.my_location,
         ),
       ),
-      ..._nearbyMarkers,
+      ..._nearbyPeers.map(
+        (peer) => Marker(
+          point: latlng.LatLng(peer.latitude, peer.longitude),
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          child: _buildMarker(
+            color: AppColors.lavender,
+            size: 42,
+            icon: Icons.person,
+            onTap: () => _openPeerSheet(peer),
+          ),
+        ),
+      ),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nearby Study Partners'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Locate me',
-            onPressed: _forceRefreshPosition,
-            icon: const Icon(Icons.my_location),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: latlng.LatLng(
+                  _currentPosition!.latitude,
+                  _currentPosition!.longitude,
+                ),
+                initialZoom: _initialZoom,
+                onMapReady: () {
+                  _isMapReady = true;
+                  _moveMapToCurrentPosition();
+                },
+              ),
+              children: <Widget>[
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'cki_demo',
+                  tileProvider: NetworkTileProvider(),
+                ),
+                MarkerLayer(markers: markers),
+              ],
+            ),
           ),
-          IconButton(
-            tooltip: 'Open location settings',
-            onPressed: () async {
-              await Geolocator.openLocationSettings();
-            },
-            icon: const Icon(Icons.location_searching),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      _BackButtonChip(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _InfoChip(
+                          title: 'Bản đồ bạn học gần',
+                          subtitle:
+                              '${_nearbyPeers.length} người trong bán kính 2km',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _PrivacySwitchCard(
+                        isVisible: _isLocationVisible,
+                        isSaving: _isSavingVisibility,
+                        onChanged: _toggleVisibility,
+                      ),
+                    ],
+                  ),
+                  if (_statusMessage != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    _StatusBanner(message: _statusMessage!),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (_nearbyPeers.isEmpty)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: _EmptyNearbyCard(
+                  isLocationVisible: _isLocationVisible,
+                ),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.small(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.deepPurple,
+        onPressed: _bootstrapNearbyMap,
+        child: const Icon(Icons.refresh),
+      ),
+    );
+  }
+
+  Widget _buildFullScreenState({
+    required String title,
+    required String message,
+    required Widget child,
+  }) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F4FF),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  color: AppColors.lavender,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.map_outlined,
+                  color: AppColors.deepPurple,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.lightText,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.lightTextSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      body: Stack(
-        children: <Widget>[
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: latlng.LatLng(
-                _currentPosition!.latitude,
-                _currentPosition!.longitude,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.lightText,
               ),
-              initialZoom: _initialZoom,
             ),
-            children: <Widget>[
-              TileLayer(
-                // Use CartoDB basemap for demo (more suitable for small demos).
-                urlTemplate:
-                    'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-                subdomains: const <String>['a', 'b', 'c', 'd'],
-                tileProvider: NetworkTileProvider(
-                  headers: {
-                    'User-Agent':
-                        'cki_demo/1.0 (contact: your-email@example.com)',
-                  },
-                ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.lightTextSecondary,
               ),
-              MarkerLayer(markers: allMarkers),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackButtonChip extends StatelessWidget {
+  const _BackButtonChip({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.94),
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: const SizedBox(
+          width: 46,
+          height: 46,
+          child: Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.lightText,
+            size: 22,
           ),
-          if (_firestoreError != null)
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 80,
-              child: Card(
-                color: Colors.orange.withOpacity(0.95),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    'Firestore warning: $_firestoreError',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrivacySwitchCard extends StatelessWidget {
+  const _PrivacySwitchCard({
+    required this.isVisible,
+    required this.isSaving,
+    required this.onChanged,
+  });
+
+  final bool isVisible;
+  final bool isSaving;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            isVisible ? 'Hiện' : 'Ẩn',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.lightText,
             ),
-          if (_nearbyMarkers.isEmpty)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Card(
-                color: Colors.white.withOpacity(0.9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Hiện chưa có bạn học nào trong bán kính 2km. Hãy rủ thêm bạn bè mở ứng dụng để học nhóm nhé!',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-          // Show current user's coordinates in the top-left corner for easy verification
-          Positioned(
-            left: 12,
-            top: 72,
-            child: Card(
-              color: Colors.white.withOpacity(0.9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bạn: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Cập nhật: ${_currentPosition!.timestamp.toLocal().toString().split('.').first}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: isVisible,
+            onChanged: isSaving ? null : onChanged,
+            activeColor: AppColors.deepPurple,
+            activeTrackColor: AppColors.deepPurple.withValues(alpha: 0.28),
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: Colors.grey,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.lightTextSecondary,
+          height: 1.35,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyNearbyCard extends StatelessWidget {
+  const _EmptyNearbyCard({required this.isLocationVisible});
+
+  final bool isLocationVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 26,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(
+            Icons.person_search_outlined,
+            color: AppColors.deepPurple,
+            size: 28,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isLocationVisible
+                ? 'Chưa có bạn học nào trong bán kính 2km.'
+                : 'Bạn đang ẩn vị trí, nên sẽ không hiển thị với người khác.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.lightTextSecondary,
+              height: 1.4,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Future<void> _forceRefreshPosition() async {
-    try {
-      setState(() => _isLoading = true);
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
-      ).timeout(const Duration(seconds: 10));
+class _PeerBottomSheet extends StatelessWidget {
+  const _PeerBottomSheet({
+    required this.peer,
+    required this.distanceMeters,
+    required this.onStartChat,
+  });
 
-      _currentPosition = pos;
-      // update firestore & map
-      await _updateUserLocationInFirestore(pos);
-      _mapController.move(
-        latlng.LatLng(pos.latitude, pos.longitude),
-        _initialZoom,
-      );
+  final NearbyStudyPeer peer;
+  final double? distanceMeters;
+  final VoidCallback onStartChat;
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _usingDemoMarkers = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Vị trí hiện tại: ${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}',
-            ),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể lấy vị trí: $e')));
-      }
+  String _distanceLabel() {
+    final double? meters = distanceMeters ?? peer.distanceMeters;
+    if (meters == null) return 'Đang tính khoảng cách';
+
+    if (meters < 1000) {
+      return 'Cách bạn ${meters.toStringAsFixed(0)}m';
     }
+
+    return 'Cách bạn ${(meters / 1000).toStringAsFixed(1)}km';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.lavender,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _PeerAvatar(avatarUrl: peer.avatarUrl),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        peer.displayName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.lightText,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _distanceLabel(),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.lightTextSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _StatusBadge(label: peer.studyStatus),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: onStartChat,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.deepPurple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Bắt đầu trò chuyện',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PeerAvatar extends StatelessWidget {
+  const _PeerAvatar({required this.avatarUrl});
+
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? url = avatarUrl?.trim().isNotEmpty == true ? avatarUrl : null;
+
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.lavender.withValues(alpha: 0.55),
+        border: Border.all(color: AppColors.lavender),
+      ),
+      child: ClipOval(
+        child: url == null
+            ? const Icon(
+                Icons.person,
+                color: AppColors.deepPurple,
+                size: 36,
+              )
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person,
+                  color: AppColors.deepPurple,
+                  size: 36,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.lavender.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.lightText,
+        ),
+      ),
+    );
   }
 }
