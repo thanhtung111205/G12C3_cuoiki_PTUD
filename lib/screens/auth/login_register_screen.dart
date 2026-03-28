@@ -45,8 +45,14 @@ class _AuthScreenState extends State<AuthScreen> {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
           <String, dynamic>{
             'name': nameToSave,
+            'displayName': nameToSave,
             'email': user.email,
+            'avatarUrl': null,
+            'isLocationVisible': true,
             'study_status': 'Chưa cập nhật',
+            'badges': <String>[],
+            'streakDays': 0,
+            'settings': <String, dynamic>{},
           },
           SetOptions(merge: true),
         );
@@ -76,7 +82,13 @@ class _AuthScreenState extends State<AuthScreen> {
         await FirebaseFirestore.instance.collection('users').doc(uid).set(
           <String, dynamic>{
             'name': 'User_$uid',
+            'displayName': 'User_$uid',
+            'avatarUrl': null,
+            'isLocationVisible': true,
             'study_status': 'Chưa cập nhật',
+            'badges': <String>[],
+            'streakDays': 0,
+            'settings': <String, dynamic>{},
           },
           SetOptions(merge: true),
         );

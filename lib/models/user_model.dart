@@ -55,9 +55,9 @@ class UserModel {
     return UserModel(
       id: documentId,
       email: map['email'] as String? ?? '',
-      displayName: map['displayName'] as String? ?? '',
-      avatarUrl: map['avatarUrl'] as String?,
-      isLocationVisible: map['isLocationVisible'] as bool? ?? false,
+      displayName: map['displayName'] as String? ?? map['name'] as String? ?? '',
+      avatarUrl: map['avatarUrl'] as String? ?? map['photoUrl'] as String?,
+      isLocationVisible: map['isLocationVisible'] as bool? ?? true,
       lastLocation: map['lastLocation'] as GeoPoint?,
       streakDays: map['streakDays'] as int? ?? 0,
       badges: List<String>.from(map['badges'] ?? []),
