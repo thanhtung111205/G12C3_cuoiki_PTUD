@@ -96,8 +96,23 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const NewsTabsScreen();
         break;
       case 'DocumentsScreen':
+        destination = const _ComingSoonScreen(
+          title: 'Kho Tài liệu',
+          description: 'Trang này đang được xây dựng, sẽ cập nhật sớm.',
+        );
+        break;
       case 'OcrScanScreen':
+        destination = const _ComingSoonScreen(
+          title: 'Quét OCR',
+          description: 'Tính năng này đang được phát triển, sẽ cập nhật sớm.',
+        );
+        break;
       case 'FlashcardScreen':
+        destination = const _ComingSoonScreen(
+          title: 'Học Flashcard',
+          description: 'Tính năng này đang được phát triển, sẽ cập nhật sớm.',
+        );
+        break;
       case 'StudyMapScreen':
         destination = currentUserId == null
             ? const _ComingSoonScreen(
