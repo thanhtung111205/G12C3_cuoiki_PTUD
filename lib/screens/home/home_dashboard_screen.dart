@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../models/article_model.dart';
 import '../news/article_detail_screen.dart';
 import '../news/news_tabs_screen.dart';
+import '../flashcards/deck_list_screen.dart';
 import '../profile/profile_settings_screen.dart';
 import '../social/nearby_map_screen.dart';
 import '../../utils/app_colors.dart';
@@ -97,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'DocumentsScreen':
       case 'OcrScanScreen':
-      case 'FlashcardScreen':
       case 'StudyMapScreen':
         destination = currentUserId == null
             ? const _ComingSoonScreen(
@@ -105,6 +105,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 description: 'Không xác định được người dùng hiện tại.',
               )
             : NearbyMapScreen(currentUserId: currentUserId);
+        break;
+      case 'FlashcardScreen':
+        destination = const FlashcardDeckScreen();
         break;
       case 'SocialScreen':
         destination = _ComingSoonScreen(
