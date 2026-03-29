@@ -2,6 +2,7 @@ import 'package:flip_card/flip_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../providers/flashcard_provider.dart';
 import '../../utils/app_colors.dart';
@@ -22,10 +23,13 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   late String _deckId;
   int _frontIndex = 0;
 
+  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
+
   @override
   void initState() {
     super.initState();
     _deckId = widget.deckId ?? _provider.activeDeck.id;
+    _provider.syncForUser(_userId);
     _provider.setActiveDeck(_deckId);
   }
 
@@ -47,6 +51,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     if (previousIndex >= 0 && previousIndex < deck.cards.length) {
       final FlashcardCard card = deck.cards[previousIndex];
       _provider.markCardReviewed(
+        _userId!,
         deck.id,
         card.id,
         remembered: direction == CardSwiperDirection.right,
@@ -62,6 +67,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   }
 
   Future<void> _openCardEditor({FlashcardCard? card}) async {
+    final String? userId = _userId;
+    if (userId == null) return;
+
     final FlashcardDeck deck = _deck;
     final FlashcardDraft? result = await showModalBottomSheet<FlashcardDraft>(
       context: context,
@@ -79,7 +87,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     if (result == null) return;
 
     if (card == null) {
-      _provider.addCard(
+      await _provider.addCard(
+        userId,
         deck.id,
         english: result.english,
         meaning: result.meaning,
@@ -92,7 +101,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
       return;
     }
 
-    _provider.updateCard(
+    await _provider.updateCard(
+      userId,
       deck.id,
       card.id,
       english: result.english,
@@ -114,15 +124,16 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   }
 
   void _deleteCurrentCard(FlashcardDeck deck, FlashcardCard card) {
+    final String? userId = _userId;
+    if (userId == null) return;
+
     final int removedIndex = _frontIndex;
     final FlashcardCard removedCard = card;
-    _provider.deleteCard(deck.id, removedCard.id);
+    _provider.deleteCard(userId, deck.id, removedCard.id);
 
     if (mounted) {
       setState(() {
-        _frontIndex = deck.cards.isEmpty
-            ? 0
-            : removedIndex.clamp(0, deck.cards.length - 1);
+        _frontIndex = 0;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -131,7 +142,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
             label: 'Hoàn tác',
             textColor: AppColors.periwinkle,
             onPressed: () {
-              _provider.insertCardAt(deck.id, removedIndex, removedCard);
+              _provider.restoreCard(userId, deck.id, removedCard);
               if (mounted) {
                 setState(() {
                   _frontIndex = removedIndex;
@@ -253,6 +264,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                                 child: CardSwiper(
                                   controller: _swiperController,
                                   cardsCount: deck.cards.length,
+                                  numberOfCardsDisplayed: deck.cards.length < 2
+                                      ? deck.cards.length
+                                      : 2,
                                   isLoop: false,
                                   duration: const Duration(milliseconds: 340),
                                   threshold: 55,

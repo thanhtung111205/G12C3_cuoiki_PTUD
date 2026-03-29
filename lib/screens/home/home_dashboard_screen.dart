@@ -103,6 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 'OcrScanScreen':
+        destination = const _ComingSoonScreen(
+          title: 'Quét OCR',
+          description: 'Tính năng Quét OCR đang được phát triển.',
+        );
+        break;
       case 'StudyMapScreen':
         destination = currentUserId == null
             ? const _ComingSoonScreen(

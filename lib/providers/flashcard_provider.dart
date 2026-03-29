@@ -1,93 +1,50 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 class FlashcardProvider extends ChangeNotifier {
-  FlashcardProvider._() {
-    _decks = <FlashcardDeck>[
-      FlashcardDeck(
-        id: 'ielts-reading',
-        title: 'Từ vựng IELTS Reading',
-        cards: <FlashcardCard>[
-          FlashcardCard(
-            id: 'ielts-1',
-            english: 'analyze',
-            meaning: 'phân tích',
-            example: 'Researchers analyze data before making conclusions.',
-          ),
-          FlashcardCard(
-            id: 'ielts-2',
-            english: 'impact',
-            meaning: 'tác động',
-            example: 'The impact of this policy is visible after one year.',
-          ),
-          FlashcardCard(
-            id: 'ielts-3',
-            english: 'evidence',
-            meaning: 'bằng chứng',
-            example: 'Strong evidence supports the main argument.',
-          ),
-          FlashcardCard(
-            id: 'ielts-4',
-            english: 'substantial',
-            meaning: 'đáng kể',
-            example: 'The report gives substantial detail about the topic.',
-          ),
-        ],
-      ),
-      FlashcardDeck(
-        id: 'business-growth',
-        title: 'Business Growth Essentials',
-        cards: <FlashcardCard>[
-          FlashcardCard(
-            id: 'business-1',
-            english: 'revenue',
-            meaning: 'doanh thu',
-            example: 'Revenue increased steadily during the last quarter.',
-          ),
-          FlashcardCard(
-            id: 'business-2',
-            english: 'strategy',
-            meaning: 'chiến lược',
-            example: 'A strong strategy keeps the team focused.',
-          ),
-          FlashcardCard(
-            id: 'business-3',
-            english: 'efficiency',
-            meaning: 'hiệu suất',
-            example: 'Efficiency improves when the process is simpler.',
-          ),
-        ],
-      ),
-      FlashcardDeck(
-        id: 'travel-daily',
-        title: 'Travel & Daily Life',
-        cards: <FlashcardCard>[
-          FlashcardCard(
-            id: 'travel-1',
-            english: 'destination',
-            meaning: 'điểm đến',
-            example: 'Our destination was only two hours away.',
-          ),
-          FlashcardCard(
-            id: 'travel-2',
-            english: 'commute',
-            meaning: 'đi lại hằng ngày',
-            example: 'I commute by bus to keep the routine simple.',
-          ),
-        ],
-      ),
-    ];
-  }
+  FlashcardProvider._();
 
   static final FlashcardProvider instance = FlashcardProvider._();
 
   factory FlashcardProvider() => instance;
 
-  late final List<FlashcardDeck> _decks;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final Map<String, FlashcardDeck> _decks = <String, FlashcardDeck>{};
+  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+  _cardSubscriptions =
+      <String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>{};
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _deckSubscription;
+  List<String> _deckOrder = <String>[];
+  String? _syncedUserId;
   String? _activeDeckId;
 
-  List<FlashcardDeck> get decks => List<FlashcardDeck>.unmodifiable(_decks);
+  String? get currentUserId => _auth.currentUser?.uid;
 
-  FlashcardDeck get activeDeck => _resolveDeck(_activeDeckId) ?? _decks.first;
+  String? get activeDeckId => _activeDeckId;
+
+  List<FlashcardDeck> get decks => _deckOrder
+      .map((String deckId) => _decks[deckId])
+      .whereType<FlashcardDeck>()
+      .toList(growable: false);
+
+  FlashcardDeck get activeDeck =>
+      deckById(_activeDeckId) ??
+      (decks.isNotEmpty
+          ? decks.first
+          : FlashcardDeck(
+              id: '',
+              title: 'Bộ từ vựng',
+              cardCount: 0,
+              reviewedCount: 0,
+              updatedAt: null,
+            ));
 
   void setActiveDeck(String deckId) {
     if (_activeDeckId == deckId) return;
@@ -95,137 +52,319 @@ class FlashcardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  FlashcardDeck? deckById(String deckId) {
-    for (final FlashcardDeck deck in _decks) {
-      if (deck.id == deckId) return deck;
+  void syncForUser(String? userId) {
+    if (userId == null) {
+      _clearSubscriptions();
+      return;
     }
-    return null;
+
+    if (_syncedUserId == userId) return;
+
+    _clearSubscriptions();
+    _syncedUserId = userId;
+
+    _deckSubscription = _deckCollection(userId)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .listen((QuerySnapshot<Map<String, dynamic>> snapshot) {
+          final Set<String> nextDeckIds = <String>{};
+          final List<String> nextOrder = <String>[];
+
+          for (final QueryDocumentSnapshot<Map<String, dynamic>> doc
+              in snapshot.docs) {
+            final FlashcardDeck incomingDeck = FlashcardDeck.fromFirestore(doc);
+            nextDeckIds.add(doc.id);
+            nextOrder.add(doc.id);
+
+            final FlashcardDeck existingDeck = _decks[doc.id] ?? incomingDeck;
+            existingDeck.title = incomingDeck.title;
+            existingDeck.cardCount = incomingDeck.cardCount;
+            existingDeck.reviewedCount = incomingDeck.reviewedCount;
+            existingDeck.updatedAt = incomingDeck.updatedAt;
+            _decks[doc.id] = existingDeck;
+
+            _ensureCardSubscription(userId, doc.id);
+          }
+
+          final List<String> removedDeckIds = _decks.keys
+              .where((String deckId) => !nextDeckIds.contains(deckId))
+              .toList(growable: false);
+          for (final String removedDeckId in removedDeckIds) {
+            _decks.remove(removedDeckId);
+            _cardSubscriptions.remove(removedDeckId)?.cancel();
+          }
+
+          _deckOrder = nextOrder;
+          if (_activeDeckId == null || !_decks.containsKey(_activeDeckId)) {
+            _activeDeckId = _deckOrder.isNotEmpty ? _deckOrder.first : null;
+          }
+
+          notifyListeners();
+        });
   }
 
-  FlashcardDeck? _resolveDeck(String? deckId) {
+  CollectionReference<Map<String, dynamic>> _deckCollection(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('flashcard_decks');
+  }
+
+  DocumentReference<Map<String, dynamic>> _deckDoc(
+    String userId,
+    String deckId,
+  ) {
+    return _deckCollection(userId).doc(deckId);
+  }
+
+  CollectionReference<Map<String, dynamic>> _cardCollection(
+    String userId,
+    String deckId,
+  ) {
+    return _deckDoc(userId, deckId).collection('cards');
+  }
+
+  void _ensureCardSubscription(String userId, String deckId) {
+    if (_cardSubscriptions.containsKey(deckId)) return;
+
+    _cardSubscriptions[deckId] = _cardCollection(userId, deckId)
+        .orderBy('createdAt')
+        .snapshots()
+        .listen((QuerySnapshot<Map<String, dynamic>> snapshot) {
+          final FlashcardDeck? deck = _decks[deckId];
+          if (deck == null) return;
+
+          deck.cards
+            ..clear()
+            ..addAll(snapshot.docs.map(FlashcardCard.fromFirestore));
+
+          _activeDeckId ??= deckId;
+          notifyListeners();
+        });
+  }
+
+  void _clearSubscriptions() {
+    _deckSubscription?.cancel();
+    _deckSubscription = null;
+
+    for (final StreamSubscription<QuerySnapshot<Map<String, dynamic>>>
+        subscription
+        in _cardSubscriptions.values) {
+      subscription.cancel();
+    }
+    _cardSubscriptions.clear();
+
+    _decks.clear();
+    _deckOrder = <String>[];
+    _syncedUserId = null;
+    _activeDeckId = null;
+  }
+
+  FlashcardDeck? deckById(String? deckId) {
     if (deckId == null) return null;
-    return deckById(deckId);
+    return _decks[deckId];
   }
 
   int reviewedCount(String deckId) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return 0;
-    return deck.cards.where((FlashcardCard card) => card.isReviewed).length;
+    return _decks[deckId]?.reviewedCount ?? 0;
   }
 
   double progressForDeck(String deckId) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null || deck.cards.isEmpty) return 0;
-    return reviewedCount(deckId) / deck.cards.length;
+    return _decks[deckId]?.progress ?? 0;
   }
 
-  void addDeck(String title) {
-    _decks.insert(
-      0,
-      FlashcardDeck(
-        id: _generateId('deck'),
-        title: title.trim(),
-        cards: <FlashcardCard>[],
-      ),
-    );
-    notifyListeners();
+  Future<void> addDeck(String userId, {required String title}) async {
+    await _deckCollection(userId).doc().set(<String, dynamic>{
+      'title': title.trim(),
+      'cardCount': 0,
+      'reviewedCount': 0,
+      'createdAt': Timestamp.now(),
+      'updatedAt': Timestamp.now(),
+    });
   }
 
-  void updateDeck(String deckId, String title) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return;
-    deck.title = title.trim();
-    notifyListeners();
+  Future<void> updateDeck(String userId, String deckId, String title) async {
+    await _deckDoc(userId, deckId).set(<String, dynamic>{
+      'title': title.trim(),
+      'updatedAt': Timestamp.now(),
+    }, SetOptions(merge: true));
   }
 
-  void deleteDeck(String deckId) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return;
-
-    _decks.remove(deck);
-    if (_activeDeckId == deckId) {
-      _activeDeckId = _decks.isEmpty ? null : _decks.first.id;
+  Future<void> deleteDeck(String userId, String deckId) async {
+    final QuerySnapshot<Map<String, dynamic>> cardsSnapshot =
+        await _cardCollection(userId, deckId).get();
+    for (int index = 0; index < cardsSnapshot.docs.length; index += 400) {
+      final WriteBatch batch = _firestore.batch();
+      final int end = math.min(index + 400, cardsSnapshot.docs.length);
+      for (int i = index; i < end; i++) {
+        batch.delete(cardsSnapshot.docs[i].reference);
+      }
+      await batch.commit();
     }
-    notifyListeners();
+    await _deckDoc(userId, deckId).delete();
   }
 
-  void addCard(
+  Future<String> addCard(
+    String userId,
     String deckId, {
     required String english,
     required String meaning,
     String? example,
-  }) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return;
+  }) async {
+    final DocumentReference<Map<String, dynamic>> doc = _cardCollection(
+      userId,
+      deckId,
+    ).doc();
+    final String normalizedEnglish = english.trim();
+    final String normalizedMeaning = meaning.trim();
 
-    deck.cards.add(
-      FlashcardCard(
-        id: _generateId('card'),
-        english: english.trim(),
-        meaning: meaning.trim(),
-        example: (example ?? _generateExampleSentence(english, meaning)).trim(),
-      ),
-    );
-    notifyListeners();
+    await _firestore.runTransaction((Transaction tx) async {
+      tx.set(doc, <String, dynamic>{
+        'english': normalizedEnglish,
+        'meaning': normalizedMeaning,
+        'example':
+            (example ??
+                    _generateExampleSentence(
+                      normalizedEnglish,
+                      normalizedMeaning,
+                    ))
+                .trim(),
+        'isReviewed': false,
+        'rememberedLastTime': null,
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+        'reviewedAt': null,
+      });
+
+      tx.set(_deckDoc(userId, deckId), <String, dynamic>{
+        'cardCount': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    });
+
+    return doc.id;
   }
 
-  void insertCardAt(String deckId, int index, FlashcardCard card) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return;
+  Future<void> restoreCard(
+    String userId,
+    String deckId,
+    FlashcardCard card,
+  ) async {
+    final DocumentReference<Map<String, dynamic>> doc = _cardCollection(
+      userId,
+      deckId,
+    ).doc(card.id);
 
-    final int safeIndex = index.clamp(0, deck.cards.length);
-    deck.cards.insert(safeIndex, card);
-    notifyListeners();
+    await _firestore.runTransaction((Transaction tx) async {
+      tx.set(doc, card.toMap(), SetOptions(merge: false));
+      tx.set(_deckDoc(userId, deckId), <String, dynamic>{
+        'cardCount': FieldValue.increment(1),
+        if (card.isReviewed) 'reviewedCount': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    });
   }
 
-  void updateCard(
+  Future<void> insertCardAt(
+    String userId,
+    String deckId,
+    int index,
+    FlashcardCard card,
+  ) async {
+    await restoreCard(userId, deckId, card);
+  }
+
+  Future<void> updateCard(
+    String userId,
     String deckId,
     String cardId, {
     required String english,
     required String meaning,
-  }) {
-    final FlashcardCard? card = cardById(deckId, cardId);
-    if (card == null) return;
+    String? example,
+  }) async {
+    final String normalizedEnglish = english.trim();
+    final String normalizedMeaning = meaning.trim();
 
-    card.english = english.trim();
-    card.meaning = meaning.trim();
-    card.example = _generateExampleSentence(english, meaning).trim();
-    notifyListeners();
+    await _cardCollection(userId, deckId).doc(cardId).set(<String, dynamic>{
+      'english': normalizedEnglish,
+      'meaning': normalizedMeaning,
+      'example':
+          (example ??
+                  _generateExampleSentence(
+                    normalizedEnglish,
+                    normalizedMeaning,
+                  ))
+              .trim(),
+      'updatedAt': Timestamp.now(),
+    }, SetOptions(merge: true));
   }
 
-  void deleteCard(String deckId, String cardId) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return;
+  Future<void> deleteCard(String userId, String deckId, String cardId) async {
+    final DocumentReference<Map<String, dynamic>> deckRef = _deckDoc(
+      userId,
+      deckId,
+    );
+    final DocumentReference<Map<String, dynamic>> cardRef = _cardCollection(
+      userId,
+      deckId,
+    ).doc(cardId);
 
-    deck.cards.removeWhere((FlashcardCard card) => card.id == cardId);
-    notifyListeners();
+    await _firestore.runTransaction((Transaction tx) async {
+      final DocumentSnapshot<Map<String, dynamic>> cardSnapshot = await tx.get(
+        cardRef,
+      );
+      if (!cardSnapshot.exists) return;
+
+      final bool wasReviewed =
+          (cardSnapshot.data()?['isReviewed'] as bool?) ?? false;
+
+      tx.delete(cardRef);
+      tx.set(deckRef, <String, dynamic>{
+        'cardCount': FieldValue.increment(-1),
+        if (wasReviewed) 'reviewedCount': FieldValue.increment(-1),
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    });
   }
 
-  void markCardReviewed(
+  Future<void> markCardReviewed(
+    String userId,
     String deckId,
     String cardId, {
     required bool remembered,
-  }) {
-    final FlashcardCard? card = cardById(deckId, cardId);
-    if (card == null) return;
+  }) async {
+    final DocumentReference<Map<String, dynamic>> deckRef = _deckDoc(
+      userId,
+      deckId,
+    );
+    final DocumentReference<Map<String, dynamic>> cardRef = _cardCollection(
+      userId,
+      deckId,
+    ).doc(cardId);
 
-    card.isReviewed = true;
-    card.rememberedLastTime = remembered;
-    notifyListeners();
-  }
+    await _firestore.runTransaction((Transaction tx) async {
+      final DocumentSnapshot<Map<String, dynamic>> cardSnapshot = await tx.get(
+        cardRef,
+      );
+      if (!cardSnapshot.exists) return;
 
-  FlashcardCard? cardById(String deckId, String cardId) {
-    final FlashcardDeck? deck = deckById(deckId);
-    if (deck == null) return null;
+      final bool wasReviewed =
+          (cardSnapshot.data()?['isReviewed'] as bool?) ?? false;
 
-    for (final FlashcardCard card in deck.cards) {
-      if (card.id == cardId) return card;
-    }
-    return null;
-  }
+      tx.set(cardRef, <String, dynamic>{
+        'isReviewed': true,
+        'rememberedLastTime': remembered,
+        'reviewedAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
 
-  String _generateId(String prefix) {
-    return '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+      if (!wasReviewed) {
+        tx.set(deckRef, <String, dynamic>{
+          'reviewedCount': FieldValue.increment(1),
+          'updatedAt': Timestamp.now(),
+        }, SetOptions(merge: true));
+      }
+    });
   }
 
   String _generateExampleSentence(String english, String meaning) {
@@ -239,16 +378,65 @@ class FlashcardProvider extends ChangeNotifier {
 }
 
 class FlashcardDeck {
-  FlashcardDeck({required this.id, required this.title, required this.cards});
+  FlashcardDeck({
+    required this.id,
+    required this.title,
+    required this.cardCount,
+    required this.reviewedCount,
+    required this.updatedAt,
+    List<FlashcardCard>? cards,
+  }) : cards = cards ?? <FlashcardCard>[];
+
+  factory FlashcardDeck.fromFirestore(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    return FlashcardDeck.fromMap(doc.id, doc.data());
+  }
+
+  factory FlashcardDeck.fromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    return FlashcardDeck.fromMap(doc.id, doc.data() ?? <String, dynamic>{});
+  }
+
+  factory FlashcardDeck.fromMap(String id, Map<String, dynamic> data) {
+    return FlashcardDeck(
+      id: id,
+      title: _readString(data['title']) ?? 'Bộ từ vựng',
+      cardCount: _readInt(data['cardCount']) ?? 0,
+      reviewedCount: _readInt(data['reviewedCount']) ?? 0,
+      updatedAt: _readDateTime(data['updatedAt']),
+    );
+  }
 
   final String id;
   String title;
+  int cardCount;
+  int reviewedCount;
+  DateTime? updatedAt;
   final List<FlashcardCard> cards;
 
-  int get reviewedCount =>
-      cards.where((FlashcardCard card) => card.isReviewed).length;
+  double get progress => cardCount <= 0 ? 0 : reviewedCount / cardCount;
 
-  double get progress => cards.isEmpty ? 0 : reviewedCount / cards.length;
+  static String? _readString(dynamic value) {
+    if (value is String) {
+      final String trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+    return null;
+  }
+
+  static int? _readInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  static DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
+  }
 }
 
 class FlashcardCard {
@@ -257,14 +445,71 @@ class FlashcardCard {
     required this.english,
     required this.meaning,
     required this.example,
-    this.isReviewed = false,
-    this.rememberedLastTime,
+    required this.isReviewed,
+    required this.rememberedLastTime,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.reviewedAt,
   });
 
+  factory FlashcardCard.fromFirestore(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    return FlashcardCard.fromMap(doc.id, doc.data());
+  }
+
+  factory FlashcardCard.fromMap(String id, Map<String, dynamic> data) {
+    return FlashcardCard(
+      id: id,
+      english: _readString(data['english']) ?? '',
+      meaning: _readString(data['meaning']) ?? '',
+      example: _readString(data['example']) ?? '',
+      isReviewed: (data['isReviewed'] as bool?) ?? false,
+      rememberedLastTime: data['rememberedLastTime'] as bool?,
+      createdAt: _readDateTime(data['createdAt']),
+      updatedAt: _readDateTime(data['updatedAt']),
+      reviewedAt: _readDateTime(data['reviewedAt']),
+    );
+  }
+
   final String id;
-  String english;
-  String meaning;
-  String example;
-  bool isReviewed;
-  bool? rememberedLastTime;
+  final String english;
+  final String meaning;
+  final String example;
+  final bool isReviewed;
+  final bool? rememberedLastTime;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? reviewedAt;
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'english': english,
+      'meaning': meaning,
+      'example': example,
+      'isReviewed': isReviewed,
+      'rememberedLastTime': rememberedLastTime,
+      'createdAt': createdAt == null
+          ? Timestamp.now()
+          : Timestamp.fromDate(createdAt!),
+      'updatedAt': updatedAt == null
+          ? Timestamp.now()
+          : Timestamp.fromDate(updatedAt!),
+      'reviewedAt': reviewedAt == null ? null : Timestamp.fromDate(reviewedAt!),
+    };
+  }
+
+  static String? _readString(dynamic value) {
+    if (value is String) {
+      final String trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+    return null;
+  }
+
+  static DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
+  }
 }
