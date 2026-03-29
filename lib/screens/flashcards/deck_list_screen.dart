@@ -104,33 +104,15 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
     required String userId,
     FlashcardDeck? deck,
   }) async {
-    final TextEditingController controller = TextEditingController(
-      text: deck?.title ?? '',
-    );
     final String? result = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text(deck == null ? 'Thêm bộ thẻ' : 'Chỉnh sửa bộ thẻ'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Tên bộ thẻ'),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Huỷ'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-              child: const Text('Lưu'),
-            ),
-          ],
+        return _DeckEditorDialog(
+          initialTitle: deck?.title ?? '',
+          isNew: deck == null,
         );
       },
     );
-    controller.dispose();
 
     if (result == null || result.trim().isEmpty) return;
 
@@ -363,3 +345,53 @@ class _EmptyDeckState extends StatelessWidget {
     );
   }
 }
+
+class _DeckEditorDialog extends StatefulWidget {
+  const _DeckEditorDialog({required this.initialTitle, required this.isNew});
+
+  final String initialTitle;
+  final bool isNew;
+
+  @override
+  State<_DeckEditorDialog> createState() => _DeckEditorDialogState();
+}
+
+class _DeckEditorDialogState extends State<_DeckEditorDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialTitle);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.isNew ? 'Thêm bộ thẻ' : 'Chỉnh sửa bộ thẻ'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Tên bộ thẻ'),
+        onSubmitted: (String value) => Navigator.of(context).pop(value),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Huỷ'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Lưu'),
+        ),
+      ],
+    );
+  }
+}
+

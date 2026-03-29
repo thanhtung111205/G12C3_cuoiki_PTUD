@@ -15,6 +15,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService.instance;
@@ -31,6 +32,7 @@ class _AuthScreenState extends State<AuthScreen> {
         await _authService.registerWithEmailAndPassword(
           email: _emailController.text,
           password: _passwordController.text,
+          name: _nameController.text,
         );
       } else {
         await _authService.signInWithEmailAndPassword(
@@ -107,6 +109,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -141,6 +144,22 @@ class _AuthScreenState extends State<AuthScreen> {
                     _AuthCard(
                       child: Column(
                         children: <Widget>[
+                          if (_isRegister) ...<Widget>[
+                            _AuthTextField(
+                              controller: _nameController,
+                              label: 'Tên tài khoản',
+                              icon: Icons.person_outline_rounded,
+                              keyboardType: TextInputType.name,
+                              autofillHints: const <String>[AutofillHints.name],
+                              textInputAction: TextInputAction.next,
+                              validator: (String? value) {
+                                final String text = value?.trim() ?? '';
+                                if (text.isEmpty) return 'Vui lòng nhập tên tài khoản';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           _AuthTextField(
                             controller: _emailController,
                             label: 'Email',

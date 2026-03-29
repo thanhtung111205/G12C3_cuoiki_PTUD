@@ -28,6 +28,7 @@ class AuthService {
   Future<UserCredential> registerWithEmailAndPassword({
     required String email,
     required String password,
+    String? name,
   }) async {
     final UserCredential credential = await _auth
         .createUserWithEmailAndPassword(
@@ -37,7 +38,9 @@ class AuthService {
 
     final User? user = credential.user;
     if (user != null) {
-      final String displayName = _displayNameFromEmail(user.email);
+      final String displayName = name?.trim().isNotEmpty == true
+          ? name!.trim()
+          : _displayNameFromEmail(user.email);
       await user.updateDisplayName(displayName);
       await user.reload();
       await _ensureUserProfile(

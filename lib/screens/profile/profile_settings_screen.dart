@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
+import '../auth/login_register_screen.dart';
 
 class ProfileSettingsScreen extends StatelessWidget {
   const ProfileSettingsScreen({super.key});
@@ -40,6 +41,10 @@ class ProfileSettingsScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã đăng xuất.')),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+          (Route<dynamic> route) => false,
         );
       }
     } catch (error) {
