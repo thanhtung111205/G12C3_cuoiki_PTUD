@@ -99,6 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const DocumentListScreen();
         break;
       case 'OcrScanScreen':
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()));
         destination = const OcrScannerScreen();
         break;
       case 'StudyMapScreen':

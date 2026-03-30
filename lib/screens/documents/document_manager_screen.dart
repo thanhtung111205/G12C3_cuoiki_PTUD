@@ -122,7 +122,7 @@ class _DocumentListScreenState extends State<DocumentListScreen>
   void _onScanDocument() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const OCRScannerScreen(),
+        builder: (_) => const OcrScannerScreen(),
       ),
     ).then((_) {
       _searchController.clear();

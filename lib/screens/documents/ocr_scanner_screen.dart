@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/ocr_service.dart';
 import '../../utils/app_colors.dart';
 
+import 'document_editor_screen.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // OCR SCANNER SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,12 +110,21 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
 
   void _saveDocument() {
     final String text = _textController.text.trim();
-    print('[OcrScannerScreen] Navigate to document_viewer_screen.dart with text: $text');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng Lưu tài liệu sẽ sớm được cập nhật.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    if (text.isEmpty || text == '(Không nhận diện được chữ)') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Không có nội dung bóc tách để lưu.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    // Chuyển sang màn hình soạn thảo và truyền sẵn văn bản OCR
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => DocumentEditorScreen(initialContent: text),
       ),
     );
   }
