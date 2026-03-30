@@ -1,11 +1,12 @@
-import 'package:flip_card/flip_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../providers/flashcard_provider.dart';
+import '../../services/dictionary_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/flashcard_item_card.dart';
 
 class FlashcardStudyScreen extends StatefulWidget {
   const FlashcardStudyScreen({super.key, this.deckId});
@@ -87,16 +88,54 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     if (result == null) return;
 
     if (card == null) {
+      // ── Fetch audio from dictionary (best-effort; never blocks save) ──────
+      String? audioUrl;
+      String? phonetic;
+      try {
+        final entry = await DictionaryService().lookupWord(result.english);
+        if (entry.audioUrl.isNotEmpty) audioUrl = entry.audioUrl;
+        if (entry.phonetic.isNotEmpty) phonetic = entry.phonetic;
+      } catch (_) {
+        // 404 or network error → silently ignore, save card without audio
+      }
+
       await _provider.addCard(
         userId,
         deck.id,
         english: result.english,
         meaning: result.meaning,
+        audioUrl: audioUrl,
+        phonetic: phonetic,
       );
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Đã thêm flashcard mới')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    audioUrl != null
+                        ? 'Đã thêm "${result.english}" kèm phát âm ✨'
+                        : 'Đã thêm "${result.english}" (không có audio)',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.deepPurple,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
       return;
     }
@@ -292,21 +331,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                                       ) {
                                         final FlashcardCard card =
                                             deck.cards[index];
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                          child: FlipCard(
-                                            flipOnTouch: true,
-                                            direction: FlipDirection.HORIZONTAL,
-                                            front: _FlashcardFrontFace(
-                                              card: card,
-                                            ),
-                                            back: _FlashcardBackFace(
-                                              card: card,
-                                            ),
-                                          ),
-                                        );
+                                        return FlashcardItemCard(card: card);
                                       },
                                 ),
                               ),
@@ -396,285 +421,6 @@ class _HeaderChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _FlashcardFrontFace extends StatelessWidget {
-  const _FlashcardFrontFace({required this.card});
-
-  final FlashcardCard card;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardSurface(
-      child: Stack(
-        children: <Widget>[
-          Positioned(
-            top: -18,
-            right: -18,
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.lavender.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Spacer(),
-                Text(
-                  card.english,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    height: 1.05,
-                    color: AppColors.deepPurple,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.pastelPink,
-                    border: Border.all(
-                      color: AppColors.periwinkle.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.volume_up_rounded,
-                    size: 42,
-                    color: AppColors.deepPurple,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Chạm để lật thẻ',
-                  style: TextStyle(
-                    color: AppColors.lightTextSecondary.withValues(alpha: 0.85),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.lavender,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'Vuốt trái / phải để chấm điểm',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.deepPurple,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FlashcardBackFace extends StatelessWidget {
-  const _FlashcardBackFace({required this.card});
-
-  final FlashcardCard card;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.lavender,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'Mặt sau',
-                    style: TextStyle(
-                      color: AppColors.deepPurple,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () async {
-                    final String? audioHint = card.example.isNotEmpty
-                        ? card.example
-                        : null;
-                    if (audioHint == null) return;
-                    await HapticFeedback.lightImpact();
-                  },
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.pastelPink,
-                    foregroundColor: AppColors.deepPurple,
-                  ),
-                  icon: const Icon(Icons.volume_up_rounded),
-                  tooltip: 'Phát âm',
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            Text(
-              card.meaning,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: AppColors.deepPurple,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Câu ví dụ',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.lightTextSecondary,
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: SingleChildScrollView(
-                child: _HighlightedSentence(
-                  sentence: card.example,
-                  targetWord: card.english,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HighlightedSentence extends StatelessWidget {
-  const _HighlightedSentence({
-    required this.sentence,
-    required this.targetWord,
-  });
-
-  final String sentence;
-  final String targetWord;
-
-  @override
-  Widget build(BuildContext context) {
-    if (sentence.trim().isEmpty) {
-      return const Text(
-        'Chưa có câu ví dụ.',
-        style: TextStyle(
-          color: AppColors.lightTextSecondary,
-          height: 1.5,
-          fontSize: 16,
-        ),
-      );
-    }
-
-    final RegExp pattern = RegExp(
-      RegExp.escape(targetWord),
-      caseSensitive: false,
-    );
-
-    final List<InlineSpan> spans = <InlineSpan>[];
-    int cursor = 0;
-
-    for (final Match match in pattern.allMatches(sentence)) {
-      if (match.start > cursor) {
-        spans.add(TextSpan(text: sentence.substring(cursor, match.start)));
-      }
-
-      spans.add(
-        WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.lavender,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              sentence.substring(match.start, match.end),
-              style: const TextStyle(
-                color: AppColors.deepPurple,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-      );
-      cursor = match.end;
-    }
-
-    if (cursor < sentence.length) {
-      spans.add(TextSpan(text: sentence.substring(cursor)));
-    }
-
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(
-          color: AppColors.lightText,
-          fontSize: 18,
-          height: 1.6,
-          fontWeight: FontWeight.w500,
-        ),
-        children: spans,
-      ),
-    );
-  }
-}
-
-class _CardSurface extends StatelessWidget {
-  const _CardSurface({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.lavender),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppColors.deepPurple.withValues(alpha: 0.12),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(28), child: child),
     );
   }
 }
@@ -909,6 +655,7 @@ class _FlashcardEditorSheet extends StatefulWidget {
 class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
   late final TextEditingController _englishController;
   late final TextEditingController _meaningController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -924,7 +671,7 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final String english = _englishController.text.trim();
     final String meaning = _meaningController.text.trim();
 
@@ -937,9 +684,17 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
       return;
     }
 
-    Navigator.of(
-      context,
-    ).pop(FlashcardDraft(english: english, meaning: meaning));
+    setState(() => _isSaving = true);
+
+    // Small delay to let the loading indicator render before
+    // the caller's async work (audio fetch + Firestore) begins.
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+
+    if (mounted) {
+      Navigator.of(
+        context,
+      ).pop(FlashcardDraft(english: english, meaning: meaning));
+    }
   }
 
   @override
@@ -992,6 +747,7 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                     child: TextField(
                       controller: _englishController,
                       textInputAction: TextInputAction.next,
+                      enabled: !_isSaving,
                       decoration: InputDecoration(
                         labelText: 'Tiếng Anh',
                         filled: true,
@@ -1008,6 +764,7 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                     child: TextField(
                       controller: _meaningController,
                       textInputAction: TextInputAction.done,
+                      enabled: !_isSaving,
                       decoration: InputDecoration(
                         labelText: 'Nghĩa tiếng Việt',
                         filled: true,
@@ -1022,17 +779,52 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
+              // Hint about audio fetch
+              if (widget.englishInitial.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: const [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: AppColors.periwinkle,
+                      ),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Audio phát âm sẽ được tự động tìm kiếm từ từ điển.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.periwinkle,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 6),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _submit,
+                  onPressed: _isSaving ? null : _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.deepPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: const Text('Lưu flashcard'),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Lưu flashcard'),
                 ),
               ),
             ],

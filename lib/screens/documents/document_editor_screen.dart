@@ -5,9 +5,10 @@ import '../../models/document_model.dart';
 import '../../providers/document_provider.dart';
 
 class DocumentEditorScreen extends StatefulWidget {
-  const DocumentEditorScreen({super.key, this.document});
+  const DocumentEditorScreen({super.key, this.document, this.initialContent});
 
   final DocumentModel? document;
+  final String? initialContent;
 
   @override
   State<DocumentEditorScreen> createState() => _DocumentEditorScreenState();
@@ -27,8 +28,8 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
     _documentProvider = DocumentProvider.instance;
 
     _titleController = TextEditingController(text: widget.document?.title ?? '');
-    _contentController =
-        TextEditingController(text: widget.document?.content ?? '');
+    _contentController = TextEditingController(
+        text: widget.document?.content ?? widget.initialContent ?? '');
     _tagController = TextEditingController();
     _tags = List<String>.from(widget.document?.tags ?? []);
   }
@@ -285,7 +286,7 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
                   return Chip(
                     label: Text(tag),
                     onDeleted: () => _removeTag(tag),
-                    backgroundColor: colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
                     labelStyle: TextStyle(
                       color: colorScheme.primary,
                     ),

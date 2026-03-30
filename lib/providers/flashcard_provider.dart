@@ -210,6 +210,8 @@ class FlashcardProvider extends ChangeNotifier {
     required String english,
     required String meaning,
     String? example,
+    String? audioUrl,
+    String? phonetic,
   }) async {
     final DocumentReference<Map<String, dynamic>> doc = _cardCollection(
       userId,
@@ -229,6 +231,8 @@ class FlashcardProvider extends ChangeNotifier {
                       normalizedMeaning,
                     ))
                 .trim(),
+        if (audioUrl != null && audioUrl.isNotEmpty) 'audioUrl': audioUrl,
+        if (phonetic != null && phonetic.isNotEmpty) 'phonetic': phonetic,
         'isReviewed': false,
         'rememberedLastTime': null,
         'createdAt': Timestamp.now(),
@@ -450,6 +454,8 @@ class FlashcardCard {
     required this.createdAt,
     required this.updatedAt,
     required this.reviewedAt,
+    this.audioUrl,
+    this.phonetic,
   });
 
   factory FlashcardCard.fromFirestore(
@@ -469,6 +475,8 @@ class FlashcardCard {
       createdAt: _readDateTime(data['createdAt']),
       updatedAt: _readDateTime(data['updatedAt']),
       reviewedAt: _readDateTime(data['reviewedAt']),
+      audioUrl: _readString(data['audioUrl']),
+      phonetic: _readString(data['phonetic']),
     );
   }
 
@@ -481,6 +489,10 @@ class FlashcardCard {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? reviewedAt;
+  /// URL to pronunciation audio (MP3). Nullable – may be absent for old cards.
+  final String? audioUrl;
+  /// IPA phonetic transcription e.g. "/həˈloʊ/". Nullable.
+  final String? phonetic;
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -496,6 +508,8 @@ class FlashcardCard {
           ? Timestamp.now()
           : Timestamp.fromDate(updatedAt!),
       'reviewedAt': reviewedAt == null ? null : Timestamp.fromDate(reviewedAt!),
+      if (audioUrl != null) 'audioUrl': audioUrl,
+      if (phonetic != null) 'phonetic': phonetic,
     };
   }
 
