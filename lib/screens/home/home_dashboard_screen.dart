@@ -8,6 +8,7 @@ import '../news/article_detail_screen.dart';
 import '../news/news_tabs_screen.dart';
 import '../flashcards/deck_list_screen.dart';
 import '../profile/profile_settings_screen.dart';
+import '../social/chat_inbox_screen.dart';
 import '../social/nearby_map_screen.dart';
 import '../documents/document_manager_screen.dart';
 import '../../utils/app_colors.dart';
@@ -99,9 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const DocumentListScreen();
         break;
       case 'OcrScanScreen':
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()));
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()),
+        );
         destination = const OcrScannerScreen();
         break;
       case 'StudyMapScreen':
@@ -116,10 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const FlashcardDeckScreen();
         break;
       case 'SocialScreen':
-        destination = _ComingSoonScreen(
-          title: feature.label,
-          description: 'Trang này chưa có, sẽ cập nhật sớm.',
-        );
+        destination = const InboxScreen();
         break;
       default:
         destination = _ComingSoonScreen(
