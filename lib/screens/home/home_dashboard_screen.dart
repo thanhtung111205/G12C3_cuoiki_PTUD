@@ -71,7 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : NearbyMapScreen(currentUserId: currentUserId);
       case 5:
-        return const ProfileSettingsScreen();
+        return ProfileSettingsScreen(
+          isDarkMode: widget.isDarkMode,
+          onToggleTheme: widget.onToggleTheme,
+        );
       default:
         return const _ComingSoonScreen(
           title: 'Tính năng',
@@ -99,9 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const DocumentListScreen();
         break;
       case 'OcrScanScreen':
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()));
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()),
+        );
         destination = const OcrScannerScreen();
         break;
       case 'StudyMapScreen':

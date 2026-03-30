@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -870,6 +871,8 @@ class _PeerAvatar extends StatelessWidget {
 
   final String? avatarUrl;
 
+  bool get _isDataUri => avatarUrl?.startsWith('data:image/') == true;
+
   @override
   Widget build(BuildContext context) {
     final String? url = avatarUrl?.trim().isNotEmpty == true ? avatarUrl : null;
@@ -885,6 +888,16 @@ class _PeerAvatar extends StatelessWidget {
       child: ClipOval(
         child: url == null
             ? const Icon(Icons.person, color: AppColors.deepPurple, size: 36)
+            : _isDataUri
+            ? Image.memory(
+                base64Decode(url.split(',').last),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person,
+                  color: AppColors.deepPurple,
+                  size: 36,
+                ),
+              )
             : Image.network(
                 url,
                 fit: BoxFit.cover,
