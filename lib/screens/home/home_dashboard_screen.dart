@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/article_model.dart';
+import '../documents/ocr_scanner_screen.dart';
 import '../news/article_detail_screen.dart';
 import '../news/news_tabs_screen.dart';
 import '../flashcards/deck_list_screen.dart';
@@ -103,10 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 'OcrScanScreen':
-        destination = const _ComingSoonScreen(
-          title: 'Quét OCR',
-          description: 'Tính năng Quét OCR đang được phát triển.',
-        );
+        destination = const OcrScannerScreen();
         break;
       case 'StudyMapScreen':
         destination = currentUserId == null

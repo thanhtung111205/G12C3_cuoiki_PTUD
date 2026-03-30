@@ -4,9 +4,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/article_model.dart';
-import '../../models/dictionary_entry_model.dart';
 import '../../services/dictionary_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/dictionary_popup_overlay.dart';
+import '../../widgets/smart_save_bottom_sheet.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   const ArticleDetailScreen({super.key, required this.article});
@@ -35,15 +36,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  String get _bodyText =>
-      (widget.article.description?.isNotEmpty ?? false)
-          ? widget.article.description!
-          : widget.article.title;
+  String get _bodyText => (widget.article.description?.isNotEmpty ?? false)
+      ? widget.article.description!
+      : widget.article.title;
 
   String _formatDate(DateTime dt) {
     final List<String> months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}'
         '  ·  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -57,12 +67,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   ) {
     if (selection.start < 0 || selection.end <= selection.start) return;
 
-    final String selectedText =
-        _bodyText.substring(selection.start, selection.end);
+    final String selectedText = _bodyText.substring(
+      selection.start,
+      selection.end,
+    );
 
     // Strip punctuation; keep only word characters
-    final String word =
-        selectedText.replaceAll(RegExp(r'[^\w]'), '').trim();
+    final String word = selectedText.replaceAll(RegExp(r'[^\w]'), '').trim();
 
     if (word.isNotEmpty && !word.contains(' ') && word != _currentLookupWord) {
       _currentLookupWord = word;
@@ -78,80 +89,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Future<void> _lookupWord(String word) async {
     if (!mounted) return;
 
-    showModalBottomSheet<void>(
+    await showDictionaryPopupOverlay(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) {
-        return SafeArea(
-          child: FutureBuilder<DictionaryEntry>(
-            future: _dictionaryService.lookupWord(word),
-            builder: (ctx, snapshot) {
-              // ── Loading ───────────────────────────────────────────────
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _BottomSheetShell(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.deepPurple,
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              // ── Error ─────────────────────────────────────────────────
-              if (snapshot.hasError) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (Navigator.canPop(sheetCtx)) Navigator.pop(sheetCtx);
-                  final bool notFound =
-                      snapshot.error is WordNotFoundException ||
-                      snapshot.error.toString().contains('WordNotFoundException');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        notFound
-                            ? 'Không tìm thấy nghĩa của "$word"'
-                            : 'Lỗi tra từ điển: ${snapshot.error}',
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                  _currentLookupWord = '';
-                });
-                return const SizedBox.shrink();
-              }
-
-              if (!snapshot.hasData) return const SizedBox.shrink();
-
-              // ── Result ────────────────────────────────────────────────
-              return _DictionaryResultSheet(
-                entry: snapshot.data!,
-                audioPlayer: _audioPlayer,
-                onSave: () {
-                  Navigator.pop(sheetCtx);
-                  print('Lưu từ "${snapshot.data!.word}" vào Flashcard');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Đã lưu "${snapshot.data!.word}" vào Sổ từ'),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        );
+      word: word,
+      dictionaryService: _dictionaryService,
+      audioPlayer: _audioPlayer,
+      onSave: (BuildContext sheetContext, entry) {
+        Navigator.pop(sheetContext);
+        showSmartSaveBottomSheet(context, word: entry.word);
       },
-    ).whenComplete(() => _currentLookupWord = '');
+      onLookupError: () => _currentLookupWord = '',
+      onClosed: () => _currentLookupWord = '',
+    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -163,8 +112,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
     final Color bgColor = isDark ? Colors.black : Colors.white;
     final Color textPrimary = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final Color textSecondary =
-        isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666);
+    final Color textSecondary = isDark
+        ? const Color(0xFFAAAAAA)
+        : const Color(0xFF666666);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -214,8 +164,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               color: textSecondary,
               size: 22,
             ),
-            onPressed: () =>
-                print('Open URL: ${widget.article.link}'),
+            onPressed: () => print('Open URL: ${widget.article.link}'),
           ),
           const SizedBox(width: 4),
         ],
@@ -444,256 +393,6 @@ class _HighlightTipBanner extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DICTIONARY BOTTOM SHEET
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Shell container for the bottom sheet – handles the rounded top corners,
-/// drag handle, and keyboard inset padding.
-class _BottomSheetShell extends StatelessWidget {
-  const _BottomSheetShell({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-/// Full dictionary result UI inside the bottom sheet.
-class _DictionaryResultSheet extends StatelessWidget {
-  const _DictionaryResultSheet({
-    required this.entry,
-    required this.audioPlayer,
-    required this.onSave,
-  });
-
-  final DictionaryEntry entry;
-  final AudioPlayer audioPlayer;
-  final VoidCallback onSave;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color textPrimary = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final Color textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-
-    return _BottomSheetShell(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // ── Word + audio ─────────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    entry.word,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                if (entry.audioUrl.isNotEmpty)
-                  _AudioButton(audioUrl: entry.audioUrl, player: audioPlayer),
-              ],
-            ),
-
-            // ── Phonetic ─────────────────────────────────────────────────
-            if (entry.phonetic.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 4),
-              Text(
-                entry.phonetic,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: AppColors.periwinkle,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 14),
-
-            // ── Part of speech tag ────────────────────────────────────────
-            if (entry.partOfSpeech.isNotEmpty) ...<Widget>[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.deepPurple.withValues(alpha: 0.3)
-                      : AppColors.lavender,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  entry.partOfSpeech,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        isDark ? AppColors.periwinkle : AppColors.deepPurple,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // ── Definition ───────────────────────────────────────────────
-            if (entry.definition.isNotEmpty)
-              Text(
-                entry.definition,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.65,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-
-            const SizedBox(height: 24),
-
-            // ── Save to flashcard CTA ────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onSave,
-                icon: const Icon(Icons.bookmark_add_rounded, size: 18),
-                label: const Text('Lưu vào Sổ từ / Flashcard'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Circular play button for pronunciation audio.
-class _AudioButton extends StatefulWidget {
-  const _AudioButton({required this.audioUrl, required this.player});
-
-  final String audioUrl;
-  final AudioPlayer player;
-
-  @override
-  State<_AudioButton> createState() => _AudioButtonState();
-}
-
-class _AudioButtonState extends State<_AudioButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  bool _playing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _play() async {
-    if (_playing) return;
-    setState(() => _playing = true);
-    _ctrl.forward().then((_) => _ctrl.reverse());
-    try {
-      await widget.player.play(UrlSource(widget.audioUrl));
-    } catch (e) {
-      debugPrint('Audio error: $e');
-    } finally {
-      if (mounted) setState(() => _playing = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: Tween<double>(begin: 1.0, end: 0.85).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-      ),
-      child: GestureDetector(
-        onTap: _play,
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.deepPurple.withValues(alpha: 0.12),
-          ),
-          child: Icon(
-            _playing ? Icons.volume_up_rounded : Icons.play_circle_rounded,
-            color: AppColors.deepPurple,
-            size: 24,
-          ),
-        ),
       ),
     );
   }
