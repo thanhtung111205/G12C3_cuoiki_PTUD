@@ -8,6 +8,7 @@ import '../news/news_tabs_screen.dart';
 import '../flashcards/deck_list_screen.dart';
 import '../profile/profile_settings_screen.dart';
 import '../social/nearby_map_screen.dart';
+import '../documents/document_manager_screen.dart';
 import '../../utils/app_colors.dart';
 import 'data/home_mock_data.dart';
 import 'widgets/home_sections.dart';
@@ -53,10 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
     switch (index) {
       case 1:
-        return const _ComingSoonScreen(
-          title: 'Tài liệu',
-          description: 'Trang này chưa có, sẽ cập nhật sớm.',
-        );
+        return const DocumentListScreen();
       case 2:
         return const NewsTabsScreen();
       case 3:
@@ -97,10 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
         destination = const NewsTabsScreen();
         break;
       case 'DocumentsScreen':
-        destination = const _ComingSoonScreen(
-          title: 'Kho Tài liệu',
-          description: 'Trang này đang được xây dựng, sẽ cập nhật sớm.',
-        );
+        destination = const DocumentListScreen();
         break;
       case 'OcrScanScreen':
         destination = const _ComingSoonScreen(
