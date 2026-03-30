@@ -8,8 +8,7 @@ import '../models/article_model.dart';
 /// The BBC World News feed is used as the default source because it is
 /// reliably accessible and returns rich media metadata.
 class RssService {
-  static const String _feedUrl =
-      'https://feeds.bbci.co.uk/news/world/rss.xml';
+  static const String _feedUrl = 'https://feeds.bbci.co.uk/news/world/rss.xml';
 
   /// Primary entry point used by the News screen.
   /// Returns a list of [Article] objects parsed from the RSS XML.
@@ -32,8 +31,7 @@ class RssService {
     }
 
     if (response.statusCode != 200) {
-      throw Exception(
-          'RSS feed returned HTTP ${response.statusCode}');
+      throw Exception('RSS feed returned HTTP ${response.statusCode}');
     }
 
     final RssFeed rssFeed;
@@ -56,21 +54,13 @@ class RssService {
     final String rawDescription = item.description ?? '';
     final String plainDescription =
         parse(parse(rawDescription).body?.text ?? '').documentElement?.text ??
-            '';
+        '';
 
     final String title = item.title ?? 'No Title';
     final String link = item.link?.toString() ?? '';
-    final String articleId =
-        item.guid ?? (link.isNotEmpty ? link : title);
+    final String articleId = item.guid ?? (link.isNotEmpty ? link : title);
 
-    // BBC attaches images via <media:content>; fall back to null if absent.
-    String? imageUrl;
-    final media = item.media;
-    if (media != null &&
-        media.contents != null &&
-        media.contents!.isNotEmpty) {
-      imageUrl = media.contents!.first.url;
-    }
+    final String? imageUrl = _readImageUrl(item);
 
     return Article(
       articleId: articleId,
@@ -81,5 +71,55 @@ class RssService {
       imageUrl: imageUrl,
       description: plainDescription,
     );
+  }
+
+  String? _readImageUrl(RssItem item) {
+    final dynamic media = item.media;
+
+    String? url = _firstMediaUrl(media?.thumbnails);
+    if (url != null) return url;
+
+    url = _firstMediaUrl(media?.contents);
+    if (url != null) return url;
+
+    final dynamic enclosure = item.enclosure;
+    url = _readDynamicUrl(enclosure);
+    if (url != null) return url;
+
+    return null;
+  }
+
+  String? _firstMediaUrl(dynamic values) {
+    if (values is Iterable) {
+      for (final dynamic value in values) {
+        final String? url = _readDynamicUrl(value);
+        if (url != null) return url;
+      }
+    }
+    return null;
+  }
+
+  String? _readDynamicUrl(dynamic value) {
+    if (value == null) return null;
+
+    try {
+      final dynamic url = value.url;
+      if (url is String && url.trim().isNotEmpty) {
+        return url.trim();
+      }
+    } catch (_) {
+      // Ignore shape mismatches and continue with other fallbacks.
+    }
+
+    try {
+      final dynamic href = value.href;
+      if (href is String && href.trim().isNotEmpty) {
+        return href.trim();
+      }
+    } catch (_) {
+      // Ignore shape mismatches and continue with other fallbacks.
+    }
+
+    return null;
   }
 }

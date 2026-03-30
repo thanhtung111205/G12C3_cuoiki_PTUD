@@ -30,9 +30,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-      _visibleUsersSubscription;
+  _visibleUsersSubscription;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-      _currentUserSubscription;
+  _currentUserSubscription;
 
   Position? _currentPosition;
   List<NearbyStudyPeer> _visiblePeers = <NearbyStudyPeer>[];
@@ -116,22 +116,28 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
         .collection('users')
         .where('isLocationVisible', isEqualTo: true)
         .snapshots()
-        .listen((snapshot) {
-          final List<NearbyStudyPeer> peers = snapshot.docs
-              .where((doc) => doc.id != widget.currentUserId)
-              .map(_peerFromDocument)
-              .whereType<NearbyStudyPeer>()
-              .toList();
+        .listen(
+          (snapshot) {
+            final List<NearbyStudyPeer> peers = snapshot.docs
+                .where((doc) => doc.id != widget.currentUserId)
+                .map(_peerFromDocument)
+                .whereType<NearbyStudyPeer>()
+                .toList();
 
-          _visiblePeers = peers;
-          _recalculateNearbyPeers();
-        }, onError: (error) {
-          _safeSetState(() {
-            _statusMessage = 'Không thể đồng bộ danh sách bạn học gần đây: $error';
-          });
-        });
+            _visiblePeers = peers;
+            _recalculateNearbyPeers();
+          },
+          onError: (error) {
+            _safeSetState(() {
+              _statusMessage =
+                  'Không thể đồng bộ danh sách bạn học gần đây: $error';
+            });
+          },
+        );
 
-    _positionSubscription = _locationService.watchPosition().listen((position) async {
+    _positionSubscription = _locationService.watchPosition().listen((
+      position,
+    ) async {
       _currentPosition = position;
       await _publishCurrentLocation(position);
       _recalculateNearbyPeers();
@@ -207,15 +213,15 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   Future<void> _publishCurrentLocation(Position position) async {
     try {
-      await _firestore.collection('users').doc(widget.currentUserId).set(
-        <String, dynamic>{
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'lastLocation': GeoPoint(position.latitude, position.longitude),
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await _firestore
+          .collection('users')
+          .doc(widget.currentUserId)
+          .set(<String, dynamic>{
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'lastLocation': GeoPoint(position.latitude, position.longitude),
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (_) {
       // Firestore write failures should not block map rendering.
     }
@@ -257,13 +263,13 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     });
 
     try {
-      await _firestore.collection('users').doc(widget.currentUserId).set(
-        <String, dynamic>{
-          'isLocationVisible': isVisible,
-          'visibilityUpdatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await _firestore
+          .collection('users')
+          .doc(widget.currentUserId)
+          .set(<String, dynamic>{
+            'isLocationVisible': isVisible,
+            'visibilityUpdatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (error) {
       _safeSetState(() {
         _isLocationVisible = !isVisible;
@@ -431,8 +437,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               ),
               children: <Widget>[
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'cki_demo',
                   tileProvider: NetworkTileProvider(),
                 ),
@@ -480,9 +485,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: _EmptyNearbyCard(
-                  isLocationVisible: _isLocationVisible,
-                ),
+                child: _EmptyNearbyCard(isLocationVisible: _isLocationVisible),
               ),
             ),
         ],
@@ -881,11 +884,7 @@ class _PeerAvatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: url == null
-            ? const Icon(
-                Icons.person,
-                color: AppColors.deepPurple,
-                size: 36,
-              )
+            ? const Icon(Icons.person, color: AppColors.deepPurple, size: 36)
             : Image.network(
                 url,
                 fit: BoxFit.cover,

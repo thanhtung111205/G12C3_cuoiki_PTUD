@@ -489,8 +489,10 @@ class FlashcardCard {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? reviewedAt;
+
   /// URL to pronunciation audio (MP3). Nullable – may be absent for old cards.
   final String? audioUrl;
+
   /// IPA phonetic transcription e.g. "/həˈloʊ/". Nullable.
   final String? phonetic;
 

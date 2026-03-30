@@ -27,12 +27,11 @@ class HomeHeaderSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool dark = isDarkMode;
-    final Color bgColor =
-        dark ? AppColors.darkHeader : AppColors.lavender;
-    final Color textPrimary =
-        dark ? AppColors.darkText : AppColors.lightText;
-    final Color textSecondary =
-        dark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color bgColor = dark ? AppColors.darkHeader : AppColors.lavender;
+    final Color textPrimary = dark ? AppColors.darkText : AppColors.lightText;
+    final Color textSecondary = dark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return Container(
       width: double.infinity,
@@ -78,10 +77,7 @@ class HomeHeaderSection extends StatelessWidget {
           const SizedBox(width: 12),
 
           // Theme toggle button
-          _ThemeToggleButton(
-            isDarkMode: isDarkMode,
-            onToggle: onToggleTheme,
-          ),
+          _ThemeToggleButton(isDarkMode: isDarkMode, onToggle: onToggleTheme),
 
           const SizedBox(width: 10),
 
@@ -94,10 +90,7 @@ class HomeHeaderSection extends StatelessWidget {
 }
 
 class _ThemeToggleButton extends StatelessWidget {
-  const _ThemeToggleButton({
-    required this.isDarkMode,
-    required this.onToggle,
-  });
+  const _ThemeToggleButton({required this.isDarkMode, required this.onToggle});
 
   final bool isDarkMode;
   final VoidCallback onToggle;
@@ -134,8 +127,7 @@ class _ThemeToggleButton extends StatelessWidget {
             isDarkMode ? Icons.wb_sunny_rounded : Icons.nightlight_round,
             key: ValueKey<bool>(isDarkMode),
             size: 22,
-            color:
-                isDarkMode ? const Color(0xFFFFD54F) : AppColors.deepPurple,
+            color: isDarkMode ? const Color(0xFFFFD54F) : AppColors.deepPurple,
           ),
         ),
       ),
@@ -170,8 +162,11 @@ class _UserAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             color: AppColors.lavender,
-            child: const Icon(Icons.person_rounded,
-                color: AppColors.deepPurple, size: 26),
+            child: const Icon(
+              Icons.person_rounded,
+              color: AppColors.deepPurple,
+              size: 26,
+            ),
           ),
         ),
       ),
@@ -184,10 +179,7 @@ class _UserAvatar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class HotNewsCarousel extends StatefulWidget {
-  const HotNewsCarousel({
-    super.key,
-    required this.onTap,
-  });
+  const HotNewsCarousel({super.key, required this.onTap});
 
   final void Function(Article article) onTap;
 
@@ -217,7 +209,9 @@ class _HotNewsCarouselState extends State<HotNewsCarousel> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             // Show shimmer-like loading cards
             articles = HomeMockData.fallbackArticles;
-          } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          } else if (snapshot.hasError ||
+              !snapshot.hasData ||
+              snapshot.data!.isEmpty) {
             articles = HomeMockData.fallbackArticles;
           } else {
             articles = snapshot.data!.take(5).toList();
@@ -234,7 +228,8 @@ class _HotNewsCarouselState extends State<HotNewsCarousel> {
                 ),
                 child: _ArticleCard(
                   article: articles[index],
-                  isLoading: snapshot.connectionState == ConnectionState.waiting,
+                  isLoading:
+                      snapshot.connectionState == ConnectionState.waiting,
                   onTap: () => widget.onTap(articles[index]),
                 ),
               );
@@ -306,8 +301,10 @@ class _ArticleCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.deepPurple.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(6),
@@ -479,8 +476,9 @@ class _FeatureTileState extends State<_FeatureTile> {
 
   @override
   Widget build(BuildContext context) {
-    final Color bg =
-        widget.isDarkMode ? widget.feature.darkBg : widget.feature.lightBg;
+    final Color bg = widget.isDarkMode
+        ? widget.feature.darkBg
+        : widget.feature.lightBg;
 
     return GestureDetector(
       onTap: widget.onTap,
