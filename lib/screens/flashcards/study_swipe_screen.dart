@@ -18,17 +18,19 @@ class FlashcardStudyScreen extends StatefulWidget {
   State<FlashcardStudyScreen> createState() => _FlashcardStudyScreenState();
 }
 
-class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with SingleTickerProviderStateMixin {
-   final FlashcardProvider _provider = FlashcardProvider.instance;
-   final CardSwiperController _swiperController = CardSwiperController();
+class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
+    with SingleTickerProviderStateMixin {
+  final FlashcardProvider _provider = FlashcardProvider.instance;
+  final CardSwiperController _swiperController = CardSwiperController();
+  int _swiperSession = 0;
 
-   late String _deckId;
-   int _frontIndex = 0;
-   // Gamification: shake counter
-   int _shakeCount = 0;
-   late final ShakeDetector _shakeDetector = ShakeDetector();
-   late final AnimationController _shakeAnimController;
-   late final Animation<double> _shakeScale;
+  late String _deckId;
+  int _frontIndex = 0;
+  // Gamification: shake counter
+  int _shakeCount = 0;
+  late final ShakeDetector _shakeDetector = ShakeDetector();
+  late final AnimationController _shakeAnimController;
+  late final Animation<double> _shakeScale;
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
@@ -60,25 +62,29 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
   }
 
   void _onShakeDetected() {
-     final FlashcardDeck deck = _deck;
-     if (deck.cards.isEmpty) return;
+    final FlashcardDeck deck = _deck;
+    if (deck.cards.isEmpty) return;
 
-     // increase gamification counter
-     setState(() {
-       _shakeCount++;
-       _frontIndex = 0; // reset to first card after shuffle
-     });
+    // increase gamification counter
+    setState(() {
+      _shakeCount++;
+      _frontIndex = 0; // reset to first card after shuffle
+    });
 
-     // provide haptic feedback
-     // Use a stronger impact for clearer feedback on supported devices
+    // provide haptic feedback
+    // Use a stronger impact for clearer feedback on supported devices
     try {
       HapticFeedback.heavyImpact();
-      Future<void>.delayed(const Duration(milliseconds: 40), () => HapticFeedback.mediumImpact());
+      Future<void>.delayed(
+        const Duration(milliseconds: 40),
+        () => HapticFeedback.mediumImpact(),
+      );
     } catch (_) {}
 
-
     // run a short visual pulse animation
-    _shakeAnimController.forward(from: 0).then((_) => _shakeAnimController.reverse());
+    _shakeAnimController
+        .forward(from: 0)
+        .then((_) => _shakeAnimController.reverse());
 
     // Capture previous order BEFORE shuffle so Undo can restore it
     final previousOrder = List<String>.from(deck.cards.map((c) => c.id));
@@ -86,36 +92,40 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
     // Shuffle locally
     _provider.shuffleDeck(deck.id);
 
-
     ScaffoldMessenger.of(context)
       ..hideCurrentMaterialBanner()
-      ..showMaterialBanner(MaterialBanner(
-        content: Text('Đã xáo trộn thứ tự thẻ — Lần lắc: $_shakeCount'),
-        leading: const Icon(Icons.shuffle_rounded),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Attempt to restore previous order (best-effort: reorder by previous ids)
-              final Map<String, FlashcardCard> map = { for (var c in deck.cards) c.id: c };
-              final List<FlashcardCard> restored = previousOrder
-                  .map((id) => map[id])
-                  .whereType<FlashcardCard>()
-                  .toList(growable: false);
-              if (restored.isNotEmpty) {
-                // Use provider method to set order and notify listeners
-                _provider.setDeckOrder(deck.id, restored);
-              }
-              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-            },
-            child: const Text('Hoàn tác'),
-          ),
-          TextButton(
-            onPressed: () => ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ));
-   }
+      ..showMaterialBanner(
+        MaterialBanner(
+          content: Text('Đã xáo trộn thứ tự thẻ — Lần lắc: $_shakeCount'),
+          leading: const Icon(Icons.shuffle_rounded),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Attempt to restore previous order (best-effort: reorder by previous ids)
+                final Map<String, FlashcardCard> map = {
+                  for (var c in deck.cards) c.id: c,
+                };
+                final List<FlashcardCard> restored = previousOrder
+                    .map((id) => map[id])
+                    .whereType<FlashcardCard>()
+                    .toList(growable: false);
+                if (restored.isNotEmpty) {
+                  // Use provider method to set order and notify listeners
+                  _provider.setDeckOrder(deck.id, restored);
+                }
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              },
+              child: const Text('Hoàn tác'),
+            ),
+            TextButton(
+              onPressed: () =>
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+  }
 
   FlashcardDeck get _deck =>
       _provider.deckById(_deckId) ?? _provider.activeDeck;
@@ -139,7 +149,6 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
 
     setState(() {
       _frontIndex = 0;
-      _swiperController = CardSwiperController();
       _swiperSession += 1;
     });
 
@@ -151,7 +160,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
   Future<void> _confirmRestartDeck(FlashcardDeck deck) async {
     if (deck.cards.isEmpty) return;
 
-    final bool shouldRestart = await showDialog<bool>(
+    final bool shouldRestart =
+        await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) {
             return AlertDialog(
@@ -342,11 +352,11 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
         final double progress = deck.progress;
         final bool isCompleted = _isDeckCompleted(deck);
         final int rememberedCards = deck.cards
-          .where((FlashcardCard card) => card.rememberedLastTime == true)
-          .length;
+            .where((FlashcardCard card) => card.rememberedLastTime == true)
+            .length;
         final int forgottenCards = deck.cards
-          .where((FlashcardCard card) => card.rememberedLastTime == false)
-          .length;
+            .where((FlashcardCard card) => card.rememberedLastTime == false)
+            .length;
 
         return Scaffold(
           backgroundColor: AppColors.pastelPink,
@@ -369,12 +379,12 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
                 icon: const Icon(Icons.shuffle_rounded),
                 tooltip: 'Xáo trộn (thử)',
               ),
-               IconButton(
-                 onPressed: () => _openCardEditor(),
-                 icon: const Icon(Icons.add_rounded),
-                 tooltip: 'Thêm flashcard',
-               ),
-             ],
+              IconButton(
+                onPressed: () => _openCardEditor(),
+                icon: const Icon(Icons.add_rounded),
+                tooltip: 'Thêm flashcard',
+              ),
+            ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(42),
               child: Padding(
@@ -427,17 +437,17 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
                   end: Alignment.bottomCenter,
                 ),
               ),
-                child: totalCards == 0
+              child: totalCards == 0
                   ? _EmptyStudyState(onAdd: () => _openCardEditor())
-                    : isCompleted
-                        ? _CompletedStudyState(
-                            reviewed: reviewedCards,
-                            total: totalCards,
-                            remembered: rememberedCards,
-                            forgotten: forgottenCards,
-                            onRestart: () => _restartDeck(deck),
-                            onAdd: () => _openCardEditor(),
-                          )
+                  : isCompleted
+                  ? _CompletedStudyState(
+                      reviewed: reviewedCards,
+                      total: totalCards,
+                      remembered: rememberedCards,
+                      forgotten: forgottenCards,
+                      onRestart: () => _restartDeck(deck),
+                      onAdd: () => _openCardEditor(),
+                    )
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                       child: Column(
@@ -460,52 +470,56 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> with Single
                                 child: ScaleTransition(
                                   scale: _shakeScale,
                                   child: CardSwiper(
-                                   controller: _swiperController,
-                                   cardsCount: deck.cards.length,
-                                   numberOfCardsDisplayed: deck.cards.length < 2
-                                       ? deck.cards.length
-                                       : 2,
-                                   isLoop: false,
-                                   duration: const Duration(milliseconds: 340),
-                                   threshold: 55,
-                                   scale: 0.95,
-                                   padding: EdgeInsets.zero,
-                                   onSwipe: _onSwipe,
-                                   onEnd: () {
-                                     HapticFeedback.mediumImpact();
-                                     ScaffoldMessenger.of(context).showSnackBar(
-                                       const SnackBar(
-                                         content: Text(
-                                           'Bạn đã đi đến thẻ cuối cùng.',
-                                         ),
-                                       ),
-                                     );
-                                   },
-                                   cardBuilder:
-                                       (
-                                         BuildContext context,
-                                         int index,
-                                         int horizontalOffsetPercentage,
-                                         int verticalOffsetPercentage,
-                                       ) {
-                                         final FlashcardCard card =
-                                             deck.cards[index];
-                                         return FlashcardItemCard(card: card);
-                                       },
+                                    key: ValueKey(_swiperSession),
+                                    controller: _swiperController,
+                                    cardsCount: deck.cards.length,
+                                    numberOfCardsDisplayed:
+                                        deck.cards.length < 2
+                                        ? deck.cards.length
+                                        : 2,
+                                    isLoop: false,
+                                    duration: const Duration(milliseconds: 340),
+                                    threshold: 55,
+                                    scale: 0.95,
+                                    padding: EdgeInsets.zero,
+                                    onSwipe: _onSwipe,
+                                    onEnd: () {
+                                      HapticFeedback.mediumImpact();
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Bạn đã đi đến thẻ cuối cùng.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    cardBuilder:
+                                        (
+                                          BuildContext context,
+                                          int index,
+                                          int horizontalOffsetPercentage,
+                                          int verticalOffsetPercentage,
+                                        ) {
+                                          final FlashcardCard card =
+                                              deck.cards[index];
+                                          return FlashcardItemCard(card: card);
+                                        },
                                   ),
                                 ),
-                               ),
-                             ),
-                           ),
-                           const SizedBox(height: 18),
-                           if (currentCard != null)
-                             _ActionRow(
-                               onDelete: () =>
-                                   _deleteCurrentCard(deck, currentCard),
-                               onForget: _swipeLeft,
-                               onRemember: _swipeRight,
-                               onEdit: () => _openCardEditor(card: currentCard),
-                             ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          if (currentCard != null)
+                            _ActionRow(
+                              onDelete: () =>
+                                  _deleteCurrentCard(deck, currentCard),
+                              onForget: _swipeLeft,
+                              onRemember: _swipeRight,
+                              onEdit: () => _openCardEditor(card: currentCard),
+                            ),
                         ],
                       ),
                     ),
@@ -933,10 +947,7 @@ class _SummaryChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
         ],
       ),
