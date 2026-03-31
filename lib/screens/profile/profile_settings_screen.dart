@@ -28,7 +28,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _reminderEnabled = true;
   bool _isLoadingProfile = true;
-  bool _isSavingProfile = false;
   Map<String, dynamic>? _profileData;
 
   @override
@@ -125,195 +124,54 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final TextEditingController nameController = TextEditingController(
-      text: _displayName,
-    );
-    String? selectedAvatar = _avatarValue;
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
-    final bool? saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext sheetContext) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setSheetState) {
-            Future<void> chooseAvatar() async {
-              final String? avatar = await _pickAvatarDataUri();
-              if (avatar == null) return;
-              setSheetState(() {
-                selectedAvatar = avatar;
-              });
-            }
-
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          const Expanded(
-                            child: Text(
-                              'Chỉnh sửa hồ sơ',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.deepPurple,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: _EditableAvatarPreview(
-                          avatarValue: selectedAvatar,
-                          label: _displayName,
-                          onPick: chooseAvatar,
-                          onRemove: () {
-                            setSheetState(() {
-                              selectedAvatar = null;
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: nameController,
-                        textInputAction: TextInputAction.done,
-                        decoration: InputDecoration(
-                          labelText: 'Tên người dùng',
-                          filled: true,
-                          fillColor: AppColors.lavender.withValues(alpha: 0.22),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        initialValue: _email,
-                        enabled: false,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          filled: true,
-                          fillColor: AppColors.lavender.withValues(alpha: 0.10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _isSavingProfile
-                            ? null
-                            : () async {
-                                final String name = nameController.text.trim();
-                                if (name.isEmpty) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Vui lòng nhập tên người dùng.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                Navigator.of(sheetContext).pop(true);
-                                setState(() => _isSavingProfile = true);
-                                try {
-                                  await AuthService.instance.updateUserProfile(
-                                    userId: user.uid,
-                                    displayName: name,
-                                    avatarUrl: selectedAvatar,
-                                  );
-                                  if (!mounted) return;
-                                  final Map<String, dynamic> updatedProfile =
-                                      <String, dynamic>{
-                                        ...?_profileData,
-                                        'displayName': name,
-                                        'name': name,
-                                      };
-                                  if (selectedAvatar != null) {
-                                    updatedProfile['avatarUrl'] =
-                                        selectedAvatar;
-                                    updatedProfile['photoUrl'] = selectedAvatar;
-                                  }
-                                  setState(() {
-                                    _profileData = updatedProfile;
-                                  });
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Đã cập nhật hồ sơ.'),
-                                    ),
-                                  );
-                                } catch (error) {
-                                  if (mounted) {
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Không thể lưu hồ sơ: $error',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                } finally {
-                                  if (mounted) {
-                                    setState(() => _isSavingProfile = false);
-                                  }
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.deepPurple,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isSavingProfile
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text('Lưu thay đổi'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+    final _EditProfileResult? result =
+        await showModalBottomSheet<_EditProfileResult>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (BuildContext sheetContext) {
+            return _EditProfileSheet(
+              initialName: _displayName,
+              initialEmail: _email,
+              initialAvatar: _avatarValue,
+              onPickAvatarUri: _pickAvatarDataUri,
             );
           },
         );
-      },
-    );
 
-    nameController.dispose();
-    if (saved == true && mounted) {
-      await _loadProfileData();
-    }
+    if (result == null || !mounted) return;
+
+    try {
+      await AuthService.instance.updateUserProfile(
+        userId: user.uid,
+        displayName: result.name,
+        avatarUrl: result.avatarUrl,
+      );
+      if (!mounted) return;
+      final Map<String, dynamic> updatedProfile = <String, dynamic>{
+        ...?_profileData,
+        'displayName': result.name,
+        'name': result.name,
+      };
+      if (result.avatarUrl != null) {
+        updatedProfile['avatarUrl'] = result.avatarUrl;
+        updatedProfile['photoUrl'] = result.avatarUrl;
+      }
+      setState(() {
+        _profileData = updatedProfile;
+      });
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật hồ sơ.')),
+      );
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Không thể lưu hồ sơ: $error')),
+        );
+      }
+    } finally {}
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -535,6 +393,165 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
               ),
             ),
+    );
+  }
+}
+
+class _EditProfileResult {
+  final String name;
+  final String? avatarUrl;
+
+  _EditProfileResult({required this.name, this.avatarUrl});
+}
+
+class _EditProfileSheet extends StatefulWidget {
+  const _EditProfileSheet({
+    required this.initialName,
+    required this.initialEmail,
+    required this.initialAvatar,
+    required this.onPickAvatarUri,
+  });
+
+  final String initialName;
+  final String initialEmail;
+  final String? initialAvatar;
+  final Future<String?> Function() onPickAvatarUri;
+
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  late final TextEditingController _nameController;
+  String? _selectedAvatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _selectedAvatar = widget.initialAvatar;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _chooseAvatar() async {
+    final String? avatar = await widget.onPickAvatarUri();
+    if (avatar == null) return;
+    setState(() {
+      _selectedAvatar = avatar;
+    });
+  }
+
+  void _onSave() {
+    final String name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập tên người dùng.')),
+      );
+      return;
+    }
+    Navigator.of(
+      context,
+    ).pop(_EditProfileResult(name: name, avatarUrl: _selectedAvatar));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Expanded(
+                    child: Text(
+                      'Chỉnh sửa hồ sơ',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.deepPurple,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: _EditableAvatarPreview(
+                  avatarValue: _selectedAvatar,
+                  label: widget.initialName,
+                  onPick: _chooseAvatar,
+                  onRemove: () {
+                    setState(() {
+                      _selectedAvatar = null;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Tên người dùng',
+                  filled: true,
+                  fillColor: AppColors.lavender.withValues(alpha: 0.22),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: widget.initialEmail,
+                enabled: false,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  filled: true,
+                  fillColor: AppColors.lavender.withValues(alpha: 0.10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _onSave,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.deepPurple,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text('Lưu thay đổi'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

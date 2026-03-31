@@ -56,27 +56,29 @@ class _DocumentListScreenState extends State<DocumentListScreen>
   }
 
   void _onCreateDocument() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const DocumentEditorScreen(),
-      ),
-    ).then((_) {
-      _searchController.clear();
-      _documentProvider.clearSearch();
-      _documentProvider.fetchDocuments();
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(builder: (_) => const DocumentEditorScreen()),
+        )
+        .then((_) {
+          _searchController.clear();
+          _documentProvider.clearSearch();
+          _documentProvider.fetchDocuments();
+        });
   }
 
   void _onDocumentTap(DocumentModel document) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DocumentViewerScreen(document: document),
-      ),
-    ).then((_) {
-      _searchController.clear();
-      _documentProvider.clearSearch();
-      _documentProvider.fetchDocuments();
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => DocumentViewerScreen(document: document),
+          ),
+        )
+        .then((_) {
+          _searchController.clear();
+          _documentProvider.clearSearch();
+          _documentProvider.fetchDocuments();
+        });
   }
 
   void _showFABMenu() {
@@ -120,15 +122,18 @@ class _DocumentListScreenState extends State<DocumentListScreen>
   }
 
   void _onScanDocument() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const OcrScannerScreen(),
-      ),
-    ).then((_) {
-      _searchController.clear();
-      _documentProvider.clearSearch();
-      _documentProvider.fetchDocuments();
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const OcrScannerScreen(entrySource: OcrEntrySource.documents),
+          ),
+        )
+        .then((_) {
+          _searchController.clear();
+          _documentProvider.clearSearch();
+          _documentProvider.fetchDocuments();
+        });
   }
 
   @override
@@ -158,9 +163,7 @@ class _DocumentListScreenState extends State<DocumentListScreen>
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colorScheme.outline,
-                    ),
+                    borderSide: BorderSide(color: colorScheme.outline),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -185,9 +188,7 @@ class _DocumentListScreenState extends State<DocumentListScreen>
                       : provider.searchResults;
 
                   if (provider.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (documents.isEmpty) {
@@ -235,11 +236,11 @@ class _DocumentListScreenState extends State<DocumentListScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.9,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.9,
+                          ),
                       itemCount: documents.length,
                       itemBuilder: (context, index) {
                         final doc = documents[index];
@@ -260,9 +261,7 @@ class _DocumentListScreenState extends State<DocumentListScreen>
         backgroundColor: AppColors.deepPurple,
         foregroundColor: Colors.white,
         onPressed: _showFABMenu,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add),
       ),
     );

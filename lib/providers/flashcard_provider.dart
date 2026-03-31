@@ -173,14 +173,16 @@ class FlashcardProvider extends ChangeNotifier {
     return _decks[deckId]?.progress ?? 0;
   }
 
-  Future<void> addDeck(String userId, {required String title}) async {
-    await _deckCollection(userId).doc().set(<String, dynamic>{
+  Future<String> addDeck(String userId, {required String title}) async {
+    final docRef = _deckCollection(userId).doc();
+    await docRef.set(<String, dynamic>{
       'title': title.trim(),
       'cardCount': 0,
       'reviewedCount': 0,
       'createdAt': Timestamp.now(),
       'updatedAt': Timestamp.now(),
     });
+    return docRef.id;
   }
 
   Future<void> updateDeck(String userId, String deckId, String title) async {
@@ -397,6 +399,28 @@ class FlashcardProvider extends ChangeNotifier {
         }, SetOptions(merge: true));
       }
     });
+  }
+
+  /// Shuffle the cards for a given deck locally and notify listeners.
+  /// This does not persist order to Firestore (cards order is derived from createdAt).
+  /// The shuffle is local only to improve UX during a study session.
+  void shuffleDeck(String deckId) {
+    final FlashcardDeck? deck = _decks[deckId];
+    if (deck == null) return;
+    deck.cards.shuffle();
+    // reset front index if necessary is handled by caller (UI)
+    notifyListeners();
+  }
+
+  /// Replace the in-memory order of cards for the given deck and notify listeners.
+  /// Use this for undoing a local shuffle. This does not persist changes to Firestore.
+  void setDeckOrder(String deckId, List<FlashcardCard> cards) {
+    final FlashcardDeck? deck = _decks[deckId];
+    if (deck == null) return;
+    deck.cards
+      ..clear()
+      ..addAll(cards);
+    notifyListeners();
   }
 
   String _generateExampleSentence(String english, String meaning) {
