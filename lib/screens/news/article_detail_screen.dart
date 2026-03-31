@@ -11,6 +11,10 @@ import '../../widgets/smart_save_bottom_sheet.dart';
 import '../../translation/context_translation_widget.dart';
 import '../../translation/translation_service.dart';
 import '../../translation/translation_viewmodel.dart';
+import '../../models/bookmark_model.dart';
+import '../../services/news_storage_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'news_tabs_screen.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   const ArticleDetailScreen({super.key, required this.article});
@@ -27,8 +31,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   // ── Local state ───────────────────────────────────────────────────────────
-  bool _isBookmarked = false;
+  late bool _isBookmarked;
   String _currentLookupWord = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _isBookmarked = globalBookmarks.containsKey(widget.article.articleId);
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
@@ -152,7 +162,33 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
             ),
             onPressed: () {
-              setState(() => _isBookmarked = !_isBookmarked);
+              setState(() {
+                _isBookmarked = !_isBookmarked;
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                
+                if (_isBookmarked) {
+                  final bmk = BookmarkModel(
+                    id: widget.article.articleId,
+                    userId: uid ?? 'local_user',
+                    articleId: widget.article.articleId,
+                    title: widget.article.title,
+                    source: widget.article.source,
+                    url: widget.article.link,
+                    thumbnailUrl: widget.article.imageUrl,
+                    isSaved: true,
+                    savedAt: DateTime.now(),
+                  );
+                  globalBookmarks[widget.article.articleId] = bmk;
+                  if (uid != null) {
+                    NewsStorageService.instance.addBookmark(uid, bmk);
+                  }
+                } else {
+                  globalBookmarks.remove(widget.article.articleId);
+                  if (uid != null) {
+                    NewsStorageService.instance.removeBookmark(uid, widget.article.articleId);
+                  }
+                }
+              });
               print(
                 _isBookmarked
                     ? 'Bookmark: ${widget.article.articleId}'

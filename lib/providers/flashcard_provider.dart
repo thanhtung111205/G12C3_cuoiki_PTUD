@@ -173,14 +173,16 @@ class FlashcardProvider extends ChangeNotifier {
     return _decks[deckId]?.progress ?? 0;
   }
 
-  Future<void> addDeck(String userId, {required String title}) async {
-    await _deckCollection(userId).doc().set(<String, dynamic>{
+  Future<String> addDeck(String userId, {required String title}) async {
+    final docRef = _deckCollection(userId).doc();
+    await docRef.set(<String, dynamic>{
       'title': title.trim(),
       'cardCount': 0,
       'reviewedCount': 0,
       'createdAt': Timestamp.now(),
       'updatedAt': Timestamp.now(),
     });
+    return docRef.id;
   }
 
   Future<void> updateDeck(String userId, String deckId, String title) async {
