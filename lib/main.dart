@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/auth/login_register_screen.dart';
 import 'screens/home/home_dashboard_screen.dart';
+import 'services/notification_service.dart';
 import 'utils/app_colors.dart';
 import 'firebase_options.dart';
 
@@ -16,6 +17,8 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 12));
+
+    await NotificationService.instance.initialize();
   } on TimeoutException catch (error) {
     debugPrint('Firebase initialize timeout: $error');
   } catch (error, stackTrace) {
@@ -43,57 +46,55 @@ class _AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<_AppRoot> {
-  final ValueNotifier<ThemeMode> _themeModeNotifier =
-      ValueNotifier<ThemeMode>(ThemeMode.light);
+  final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(
+    ThemeMode.light,
+  );
 
   void _toggleTheme() {
-    _themeModeNotifier.value =
-        _themeModeNotifier.value == ThemeMode.light
-            ? ThemeMode.dark
-            : ThemeMode.light;
+    _themeModeNotifier.value = _themeModeNotifier.value == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
   }
 
   ThemeData _buildLightTheme() {
-    final ColorScheme colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.deepPurple,
-      brightness: Brightness.light,
-    ).copyWith(
-      primary: AppColors.deepPurple,
-      secondary: AppColors.periwinkle,
-      tertiary: AppColors.lavender,
-      surface: Colors.white,
-      onSurface: const Color(0xFF231A3D),
-    );
+    final ColorScheme colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.deepPurple,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: AppColors.deepPurple,
+          secondary: AppColors.periwinkle,
+          tertiary: AppColors.lavender,
+          surface: Colors.white,
+          onSurface: const Color(0xFF231A3D),
+        );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: Colors.white,
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-      ),
+      appBarTheme: const AppBarTheme(elevation: 0),
     );
   }
 
   ThemeData _buildDarkTheme() {
-    final ColorScheme colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.deepPurple,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: AppColors.periwinkle,
-      secondary: AppColors.deepPurple,
-      tertiary: const Color(0xFF2A223D),
-      surface: const Color(0xFF121212),
-      onSurface: const Color(0xFFEDE7FF),
-    );
+    final ColorScheme colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.deepPurple,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: AppColors.periwinkle,
+          secondary: AppColors.deepPurple,
+          tertiary: const Color(0xFF2A223D),
+          surface: const Color(0xFF121212),
+          onSurface: const Color(0xFFEDE7FF),
+        );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFF101014),
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-      ),
+      appBarTheme: const AppBarTheme(elevation: 0),
     );
   }
 
