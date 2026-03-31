@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 // ignore_for_file: avoid_print
 
 import 'package:flutter/material.dart';
@@ -20,7 +22,7 @@ class HomeHeaderSection extends StatelessWidget {
   });
 
   final String userName;
-  final String avatarUrl;
+  final String? avatarUrl;
   final bool isDarkMode;
   final VoidCallback onToggleTheme;
 
@@ -138,10 +140,42 @@ class _ThemeToggleButton extends StatelessWidget {
 class _UserAvatar extends StatelessWidget {
   const _UserAvatar({required this.avatarUrl});
 
-  final String avatarUrl;
+  final String? avatarUrl;
+
+  bool get _isDataUri => avatarUrl?.startsWith('data:image/') == true;
+
+  Widget _fallback() {
+    return Container(
+      color: AppColors.lavender,
+      child: const Icon(
+        Icons.person_rounded,
+        color: AppColors.deepPurple,
+        size: 26,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final Widget child;
+
+    if (_isDataUri) {
+      final String base64Data = avatarUrl!.split(',').last;
+      child = Image.memory(
+        base64Decode(base64Data),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _fallback(),
+      );
+    } else if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      child = Image.network(
+        avatarUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _fallback(),
+      );
+    } else {
+      child = _fallback();
+    }
+
     return Container(
       width: 44,
       height: 44,
@@ -157,18 +191,7 @@ class _UserAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: Image.network(
-          avatarUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            color: AppColors.lavender,
-            child: const Icon(
-              Icons.person_rounded,
-              color: AppColors.deepPurple,
-              size: 26,
-            ),
-          ),
-        ),
+        child: child,
       ),
     );
   }
