@@ -37,6 +37,7 @@ dependencies:
   http: ^1.6.0
   webfeed_plus: ^1.1.2
   audioplayers: ^6.6.0
+  sensors_plus: ^3.0.0
   html: ^0.15.6
   firebase_core: ^3.0.0
   cloud_firestore: ^5.0.0
@@ -52,6 +53,7 @@ dependencies:
   provider: ^6.1.2
   google_mlkit_text_recognition: ^0.13.0
   image_picker: ^1.1.2
+  # vibration: ^1.7.4  # removed - legacy plugin caused Android build error; using Flutter HapticFeedback instead
 
 
 dev_dependencies:
@@ -76,6 +78,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Optional: include a short shuffle sound at assets/sounds/shuffle.wav
+  # If you add a sound file, uncomment and update the assets section below.
+  # assets:
+  #   - assets/sounds/shuffle.wav
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
@@ -88,7 +95,7 @@ flutter:
   # https://flutter.dev/to/asset-from-package
 
   # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
+  # in this "flutter" section. Each entry in this list should have the
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:

@@ -7,6 +7,7 @@ import 'screens/auth/login_register_screen.dart';
 import 'screens/home/home_dashboard_screen.dart';
 import 'utils/app_colors.dart';
 import 'firebase_options.dart';
+import 'translation/translation_demo_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,6 +117,7 @@ class _AppRootState extends State<_AppRoot> {
           themeMode: themeMode,
           themeAnimationDuration: const Duration(milliseconds: 350),
           themeAnimationCurve: Curves.easeInOutCubic,
+          // App home — use auth state to pick Home or Auth screen.
           home: StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
             builder: (context, snapshot) {
@@ -133,6 +135,10 @@ class _AppRootState extends State<_AppRoot> {
               return const AuthScreen();
             },
           ),
+          // For development: keep demo route available at '/translate_demo'
+          routes: {
+           '/translate_demo': (_) => const TranslationDemoScreen(),
+          },
         );
       },
     );

@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../../models/document_model.dart';
 import '../../providers/document_provider.dart';
+import '../../translation/context_translation_widget.dart';
+import '../../translation/translation_service.dart';
+import '../../translation/translation_viewmodel.dart';
 
 class DocumentEditorScreen extends StatefulWidget {
   const DocumentEditorScreen({super.key, this.document, this.initialContent});
@@ -19,6 +22,7 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
   late TextEditingController _contentController;
   late TextEditingController _tagController;
   late DocumentProvider _documentProvider;
+  late final TranslationViewModel _translationViewModel;
   List<String> _tags = <String>[];
   bool _isLoading = false;
 
@@ -32,6 +36,10 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
         text: widget.document?.content ?? widget.initialContent ?? '');
     _tagController = TextEditingController();
     _tags = List<String>.from(widget.document?.tags ?? []);
+    
+    _translationViewModel = TranslationViewModel(
+      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+    );
   }
 
   @override
@@ -39,6 +47,7 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
     _titleController.dispose();
     _contentController.dispose();
     _tagController.dispose();
+    _translationViewModel.dispose();
     super.dispose();
   }
 
@@ -224,21 +233,26 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _contentController,
-              enableInteractiveSelection: true,
-              decoration: InputDecoration(
-                hintText: 'Nhập nội dung hoặc dán từ bên ngoài',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 12,
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ContextTranslationWidget(
+                controller: _contentController,
+                viewModel: _translationViewModel,
+                readOnly: false,
+                maxLines: 12,
+                minLines: 8,
+                decoration: const InputDecoration(
+                  hintText: 'Nhập nội dung hoặc dán từ bên ngoài',
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 12,
+                  ),
+                  border: InputBorder.none,
                 ),
               ),
-              maxLines: 12,
-              minLines: 8,
             ),
             const SizedBox(height: 24),
 

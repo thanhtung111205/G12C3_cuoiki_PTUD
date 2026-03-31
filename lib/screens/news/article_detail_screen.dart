@@ -8,6 +8,9 @@ import '../../services/dictionary_service.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/dictionary_popup_overlay.dart';
 import '../../widgets/smart_save_bottom_sheet.dart';
+import '../../translation/context_translation_widget.dart';
+import '../../translation/translation_service.dart';
+import '../../translation/translation_viewmodel.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   const ArticleDetailScreen({super.key, required this.article});
@@ -240,19 +243,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Article body (SelectableText) ───────────────────────
-                  SelectableText(
-                    _bodyText,
-                    style: TextStyle(
-                      fontSize: 17,
-                      height: 1.85,
-                      color: textPrimary,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.1,
+                  // ── Article body with context-aware translation on selection ──
+                  ContextTranslationWidget(
+                    text: _bodyText,
+                    viewModel: TranslationViewModel(
+                      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
                     ),
-                    onSelectionChanged: _onSelectionChanged,
-                    selectionControls: materialTextSelectionControls,
-                    cursorColor: AppColors.deepPurple,
                   ),
 
                   const SizedBox(height: 40),

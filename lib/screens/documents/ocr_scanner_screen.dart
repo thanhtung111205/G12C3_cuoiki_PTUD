@@ -7,6 +7,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../services/ocr_service.dart';
 import '../../utils/app_colors.dart';
+import '../../translation/context_translation_widget.dart';
+import '../../translation/translation_service.dart';
+import '../../translation/translation_viewmodel.dart';
 
 import 'document_editor_screen.dart';
 
@@ -28,6 +31,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   // ── Services ──────────────────────────────────────────────────────────────
   final OcrService _ocr = OcrService();
   final ImagePicker _picker = ImagePicker();
+  late final TranslationViewModel _translationViewModel;
 
   // ── State ─────────────────────────────────────────────────────────────────
   String? _imagePath;       // null = belum ada foto
@@ -42,11 +46,15 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   void initState() {
     super.initState();
     _textController = TextEditingController();
+    _translationViewModel = TranslationViewModel(
+      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+    );
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    _translationViewModel.dispose();
     super.dispose();
   }
 
@@ -154,6 +162,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
             flex: 4,
             child: _TextPanel(
               controller: _textController,
+              translationViewModel: _translationViewModel,
               isExtracting: _isExtracting,
               isPreviewMode: hasImage,
               onRetake: _retake,
@@ -308,6 +317,7 @@ class _ImagePreview extends StatelessWidget {
 class _TextPanel extends StatelessWidget {
   const _TextPanel({
     required this.controller,
+    required this.translationViewModel,
     required this.isExtracting,
     required this.isPreviewMode,
     required this.onRetake,
@@ -316,6 +326,7 @@ class _TextPanel extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final TranslationViewModel translationViewModel;
   final bool isExtracting;
   final bool isPreviewMode;
   final VoidCallback onRetake;
@@ -378,28 +389,11 @@ class _TextPanel extends StatelessWidget {
             child: Stack(
               children: <Widget>[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: ContextTranslationWidget(
                     controller: controller,
-                    maxLines: null,
-                    expands: true,
-                    textAlignVertical: TextAlignVertical.top,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.65,
-                      color: Color(0xFF1A1A2E),
-                      fontWeight: FontWeight.w400,
-                    ),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: isPreviewMode
-                          ? 'Đang nhận diện...'
-                          : 'Chữ sẽ xuất hiện sau khi chụp ảnh.',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.withValues(alpha: 0.55),
-                        fontSize: 14,
-                      ),
-                    ),
+                    viewModel: translationViewModel,
+                    readOnly: false,
                   ),
                 ),
 
