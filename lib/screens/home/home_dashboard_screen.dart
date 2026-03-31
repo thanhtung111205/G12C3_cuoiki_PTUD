@@ -67,10 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const NewsTabsScreen();
       case 3:
-        return const _ComingSoonScreen(
-          title: 'Bạn học',
-          description: 'Tính năng Bạn học đang được phát triển.',
-        );
+        return const InboxScreen();
       case 4:
         return currentUserId == null
             ? const _ComingSoonScreen(
