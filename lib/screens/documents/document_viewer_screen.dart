@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/document_model.dart';
+import '../../providers/chat_provider.dart';
 import '../../providers/document_provider.dart';
 import 'document_editor_screen.dart';
 
@@ -16,6 +21,9 @@ class DocumentViewerScreen extends StatefulWidget {
 
 class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   late DocumentProvider _documentProvider;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ChatProvider _chatProvider = ChatProvider.instance;
 
   @override
   void initState() {
@@ -24,14 +32,16 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   }
 
   void _onEdit() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DocumentEditorScreen(document: widget.document),
-      ),
-    ).then((_) {
-      // After edit, pop back to list to refresh
-      Navigator.pop(context);
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => DocumentEditorScreen(document: widget.document),
+          ),
+        )
+        .then((_) {
+          // After edit, pop back to list to refresh
+          Navigator.pop(context);
+        });
   }
 
   void _onDelete() {
@@ -82,12 +92,117 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     );
   }
 
-  void _onShare() {
+  Future<void> _onShare() async {
+    final String? currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn cần đăng nhập để chia sẻ tài liệu.')),
+      );
+      return;
+    }
+
+    final QuerySnapshot<Map<String, dynamic>> usersSnapshot = await _firestore
+        .collection('users')
+        .limit(60)
+        .get();
+
+    final List<_SharePeer> peers = usersSnapshot.docs
+        .where((doc) => doc.id != currentUserId)
+        .map((doc) {
+          final Map<String, dynamic> data = doc.data();
+          final String name =
+              (data['displayName'] as String?)?.trim().isNotEmpty == true
+              ? (data['displayName'] as String).trim()
+              : (data['name'] as String?)?.trim().isNotEmpty == true
+              ? (data['name'] as String).trim()
+              : (data['email'] as String?)?.split('@').first ?? 'Bạn học';
+          return _SharePeer(
+            id: doc.id,
+            name: name,
+            avatarUrl:
+                data['avatarUrl'] as String? ?? data['photoUrl'] as String?,
+          );
+        })
+        .toList();
+
+    if (!mounted) return;
+
+    if (peers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có bạn học nào để chia sẻ.')),
+      );
+      return;
+    }
+
+    final _SharePeer? selectedPeer = await showModalBottomSheet<_SharePeer>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Chia sẻ cho bạn học',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: peers.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (BuildContext context, int index) {
+                    final _SharePeer peer = peers[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            peer.avatarUrl?.trim().isNotEmpty == true
+                            ? NetworkImage(peer.avatarUrl!)
+                            : null,
+                        child: peer.avatarUrl?.trim().isNotEmpty == true
+                            ? null
+                            : const Icon(Icons.person),
+                      ),
+                      title: Text(peer.name),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(sheetContext).pop(peer),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedPeer == null) return;
+
+    final String payload =
+        'DOC_SHARE::${jsonEncode(<String, dynamic>{'type': 'document_share', 'documentId': widget.document.id, 'title': widget.document.title, 'content': widget.document.content, 'wordCount': widget.document.wordCount, 'sharedBy': currentUserId, 'sharedAt': DateTime.now().toIso8601String()})}';
+
+    final String roomId = await _chatProvider.ensureRoom(
+      currentUserId: currentUserId,
+      partnerId: selectedPeer.id,
+    );
+
+    await _chatProvider.sendMessage(
+      roomId: roomId,
+      senderId: currentUserId,
+      receiverId: selectedPeer.id,
+      content: payload,
+    );
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng chia sẻ sẽ được cập nhật sớm'),
-        duration: Duration(seconds: 2),
-      ),
+      SnackBar(content: Text('Đã chia sẻ tài liệu cho ${selectedPeer.name}')),
     );
   }
 
@@ -179,9 +294,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
             ],
 
             // Divider
-            Divider(
-              color: colorScheme.outline.withOpacity(0.2),
-            ),
+            Divider(color: colorScheme.outline.withOpacity(0.2)),
             const SizedBox(height: 16),
 
             // Document Content
@@ -196,16 +309,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: colorScheme.surface.withOpacity(0.5),
-                border: Border.all(
-                  color: colorScheme.outline.withOpacity(0.2),
-                ),
+                border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 widget.document.content,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  height: 1.6,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
               ),
             ),
             const SizedBox(height: 32),
@@ -214,4 +323,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       ),
     );
   }
+}
+
+class _SharePeer {
+  const _SharePeer({required this.id, required this.name, this.avatarUrl});
+
+  final String id;
+  final String name;
+  final String? avatarUrl;
 }

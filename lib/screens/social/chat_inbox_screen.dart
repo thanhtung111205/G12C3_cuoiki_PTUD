@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +29,31 @@ class _InboxScreenState extends State<InboxScreen> {
     super.dispose();
   }
 
+  String _buildPreviewText(String? raw) {
+    final String message = raw?.trim() ?? '';
+    if (message.isEmpty) {
+      return 'Bắt đầu trò chuyện ngay';
+    }
+
+    if (message.startsWith('DOC_SHARE::')) {
+      try {
+        final Map<String, dynamic> map =
+            jsonDecode(message.substring('DOC_SHARE::'.length))
+                as Map<String, dynamic>;
+        final String title = map['title'] as String? ?? 'Tài liệu';
+        return '📄 Đã chia sẻ tài liệu: $title';
+      } catch (_) {
+        return '📄 Đã chia sẻ tài liệu';
+      }
+    }
+
+    if (message.startsWith('📄 Tài liệu được chia sẻ')) {
+      return '📄 Đã chia sẻ tài liệu';
+    }
+
+    return message;
+  }
+
   void _maybePlayIncomingSound(List<ChatInboxItem> items) {
     bool shouldPlay = false;
 
@@ -43,7 +70,11 @@ class _InboxScreenState extends State<InboxScreen> {
       final ChatInboxItem newestItem = items.first;
       final String eventKey =
           '${newestItem.roomId}:${newestItem.lastMessageTime?.millisecondsSinceEpoch ?? 0}:${newestItem.unreadCount}';
-      NotificationService.instance.playIncomingMessageSound(eventKey: eventKey);
+      NotificationService.instance.playIncomingMessageSound(
+        eventKey: eventKey,
+        title: 'Tin nhắn mới từ ${newestItem.partnerName}',
+        body: _buildPreviewText(newestItem.lastMessage),
+      );
     }
   }
 
@@ -246,12 +277,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                           ),
                                           const SizedBox(height: 5),
                                           Text(
-                                            item.lastMessage
-                                                        ?.trim()
-                                                        .isNotEmpty ==
-                                                    true
-                                                ? item.lastMessage!
-                                                : 'Bắt đầu trò chuyện ngay',
+                                            _buildPreviewText(item.lastMessage),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
