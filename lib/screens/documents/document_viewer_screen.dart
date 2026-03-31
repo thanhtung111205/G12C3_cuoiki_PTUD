@@ -101,21 +101,55 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       return;
     }
 
-    final QuerySnapshot<Map<String, dynamic>> usersSnapshot = await _firestore
-        .collection('users')
-        .limit(60)
-        .get();
+    final QuerySnapshot<Map<String, dynamic>> roomSnapshot =
+        await _firestore
+            .collection('chatRooms')
+            .where('participants', arrayContains: currentUserId)
+            .get();
 
-    final List<_SharePeer> peers = usersSnapshot.docs
-        .where((doc) => doc.id != currentUserId)
-        .map((doc) {
-          final Map<String, dynamic> data = doc.data();
+    final Set<String> partnerIds = <String>{};
+    for (final QueryDocumentSnapshot<Map<String, dynamic>> roomDoc
+        in roomSnapshot.docs) {
+      final Map<String, dynamic> roomData = roomDoc.data();
+      final String lastMessage = (roomData['lastMessage'] as String? ?? '').trim();
+      if (lastMessage.isEmpty) {
+        continue;
+      }
+
+      final List<String> participants = List<String>.from(
+        roomData['participants'] ?? <String>[],
+      );
+      if (!participants.contains(currentUserId)) {
+        continue;
+      }
+
+      final String? partnerId = participants.cast<String?>().firstWhere(
+        (String? id) => id != null && id != currentUserId,
+        orElse: () => null,
+      );
+      if (partnerId != null && partnerId.isNotEmpty) {
+        partnerIds.add(partnerId);
+      }
+    }
+
+    final List<DocumentSnapshot<Map<String, dynamic>>> userDocs =
+        await Future.wait(
+          partnerIds.map(
+            (String id) => _firestore.collection('users').doc(id).get(),
+          ),
+        );
+
+    final List<_SharePeer> peers = userDocs
+        .where((DocumentSnapshot<Map<String, dynamic>> doc) => doc.exists)
+        .map((DocumentSnapshot<Map<String, dynamic>> doc) {
+          final Map<String, dynamic> data = doc.data() ?? <String, dynamic>{};
           final String name =
               (data['displayName'] as String?)?.trim().isNotEmpty == true
               ? (data['displayName'] as String).trim()
               : (data['name'] as String?)?.trim().isNotEmpty == true
               ? (data['name'] as String).trim()
               : (data['email'] as String?)?.split('@').first ?? 'Bạn học';
+
           return _SharePeer(
             id: doc.id,
             name: name,
@@ -129,7 +163,9 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
 
     if (peers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chưa có bạn học nào để chia sẻ.')),
+        const SnackBar(
+          content: Text('Bạn chỉ có thể chia sẻ cho bạn học đã từng nhắn tin.'),
+        ),
       );
       return;
     }

@@ -48,23 +48,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onBottomTabTap(int index) {
-    if (index == 4) {
-      // Map screen: Push over the current route to cover the bottom navbar
-      final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-      final Widget destination = currentUserId == null
-          ? const _ComingSoonScreen(
-              title: 'Bản đồ',
-              description: 'Không xác định được người dùng hiện tại.',
-            )
-          : NearbyMapScreen(currentUserId: currentUserId);
-
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => destination));
+    if (index == 0) {
+      setState(() => _currentTabIndex = 0);
       return;
     }
 
     setState(() => _currentTabIndex = index);
+    final Widget destination = _buildBottomTabDestination(index);
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => destination)).then((_) {
+      if (mounted) setState(() => _currentTabIndex = 0);
+    });
+  }
+
+  Widget _buildBottomTabDestination(int index) {
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    switch (index) {
+      case 1:
+        return const DocumentListScreen();
+      case 2:
+        return const NewsTabsScreen();
+      case 3:
+        return const InboxScreen();
+      case 4:
+        return currentUserId == null
+            ? const _ComingSoonScreen(
+                title: 'Bản đồ',
+                description: 'Không xác định được người dùng hiện tại.',
+              )
+            : NearbyMapScreen(currentUserId: currentUserId);
+      case 5:
+        return ProfileSettingsScreen(
+          isDarkMode: widget.isDarkMode,
+          onToggleTheme: widget.onToggleTheme,
+        );
+      default:
+        return const _ComingSoonScreen(
+          title: 'Tính năng',
+          description: 'Trang này chưa có, sẽ cập nhật sớm.',
+        );
+    }
   }
 
   void _onArticleTap(Article article) {
