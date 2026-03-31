@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/auth/login_register_screen.dart';
 import 'screens/home/home_dashboard_screen.dart';
-import 'services/notification_service.dart';
 import 'utils/app_colors.dart';
 import 'firebase_options.dart';
 import 'translation/translation_demo_screen.dart';
@@ -13,40 +12,27 @@ import 'translation/translation_demo_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase first so Firebase-dependent screens don't race on startup.
+  // Initialize Firebase with a shorter timeout and better error handling
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 12));
-
-    await NotificationService.instance.initialize();
-  } on TimeoutException catch (error) {
-    debugPrint('Firebase initialize timeout: $error');
-  } catch (error, stackTrace) {
-    debugPrint('Firebase initialize error: $error');
-    debugPrintStack(stackTrace: stackTrace);
+    ).timeout(const Duration(seconds: 8)); // Reduced from 12s to 8s
+  } catch (error) {
+    debugPrint('Firebase initialization failed: $error');
+    // We still continue to runApp, screens will handle missing Firebase state
   }
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _AppRoot();
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class _AppRoot extends StatefulWidget {
-  const _AppRoot();
-
-  @override
-  State<_AppRoot> createState() => _AppRootState();
-}
-
-class _AppRootState extends State<_AppRoot> {
+class _MyAppState extends State<MyApp> {
   final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(
     ThemeMode.light,
   );
@@ -116,8 +102,6 @@ class _AppRootState extends State<_AppRoot> {
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: themeMode,
-          themeAnimationDuration: const Duration(milliseconds: 350),
-          themeAnimationCurve: Curves.easeInOutCubic,
           // App home — use auth state to pick Home or Auth screen.
           home: StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
@@ -136,9 +120,8 @@ class _AppRootState extends State<_AppRoot> {
               return const AuthScreen();
             },
           ),
-          // For development: keep demo route available at '/translate_demo'
           routes: {
-           '/translate_demo': (_) => const TranslationDemoScreen(),
+            '/translate_demo': (_) => const TranslationDemoScreen(),
           },
         );
       },

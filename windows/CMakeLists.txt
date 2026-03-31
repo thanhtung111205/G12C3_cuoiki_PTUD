@@ -1,5 +1,9 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
+
+# Fix for Firebase SDK CMake compatibility issue (updated to 3.10 to satisfy newer CMake versions)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+
 project(cki_demo LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
