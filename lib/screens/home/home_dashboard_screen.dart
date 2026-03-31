@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,6 +28,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? get _userProfileStream {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return null;
+    return FirebaseFirestore.instance.collection('users').doc(userId).snapshots();
+  }
 
   /// Resolved from FirebaseAuth; falls back to mock name if not signed in.
   String get _userName {
@@ -72,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : NearbyMapScreen(currentUserId: currentUserId);
       case 5:
-        return const ProfileSettingsScreen();
+        return ProfileSettingsScreen(
+          isDarkMode: widget.isDarkMode,
+          onToggleTheme: widget.onToggleTheme,
+        );
       default:
         return const _ComingSoonScreen(
           title: 'Tính năng',
@@ -147,22 +157,49 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
     );
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      extendBodyBehindAppBar: true,
-      body: _HomeBody(
-        isDarkMode: dark,
-        userName: _userName,
-        onToggleTheme: widget.onToggleTheme ?? () {},
-        onArticleTap: _onArticleTap,
-        onFeatureTap: _onFeatureTap,
-      ),
-      bottomNavigationBar: _HomeBottomNav(
-        currentIndex: _currentTabIndex,
-        isDarkMode: dark,
-        onTap: _onBottomTabTap,
-      ),
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _userProfileStream,
+      builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          extendBodyBehindAppBar: true,
+          body: _HomeBody(
+            isDarkMode: dark,
+            userName: _userName,
+            avatarUrl: _resolveAvatarUrl(snapshot.data?.data()),
+            onToggleTheme: widget.onToggleTheme ?? () {},
+            onArticleTap: _onArticleTap,
+            onFeatureTap: _onFeatureTap,
+          ),
+          bottomNavigationBar: _HomeBottomNav(
+            currentIndex: _currentTabIndex,
+            isDarkMode: dark,
+            onTap: _onBottomTabTap,
+          ),
+        );
+      },
     );
+  }
+
+  String? _resolveAvatarUrl(Map<String, dynamic>? profileData) {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    String readString(dynamic value) {
+      if (value is String) {
+        final String trimmed = value.trim();
+        if (trimmed.isNotEmpty) return trimmed;
+      }
+      return '';
+    }
+
+    final String profileAvatar = readString(profileData?['avatarUrl']);
+    final String profilePhoto = readString(profileData?['photoUrl']);
+    final String authPhoto = readString(user?.photoURL);
+
+    if (profileAvatar.isNotEmpty) return profileAvatar;
+    if (profilePhoto.isNotEmpty) return profilePhoto;
+    if (authPhoto.isNotEmpty) return authPhoto;
+    return null;
   }
 }
 
@@ -174,6 +211,7 @@ class _HomeBody extends StatelessWidget {
   const _HomeBody({
     required this.isDarkMode,
     required this.userName,
+    required this.avatarUrl,
     required this.onToggleTheme,
     required this.onArticleTap,
     required this.onFeatureTap,
@@ -181,6 +219,7 @@ class _HomeBody extends StatelessWidget {
 
   final bool isDarkMode;
   final String userName;
+  final String? avatarUrl;
   final VoidCallback onToggleTheme;
   final void Function(Article article) onArticleTap;
   final void Function(CoreFeature feature) onFeatureTap;
@@ -194,7 +233,7 @@ class _HomeBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: HomeHeaderSection(
             userName: userName,
-            avatarUrl: HomeMockData.avatarUrl,
+            avatarUrl: avatarUrl,
             isDarkMode: isDarkMode,
             onToggleTheme: onToggleTheme,
           ),

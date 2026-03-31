@@ -84,6 +84,51 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
+  Future<void> updateUserProfile({
+    required String userId,
+    String? displayName,
+    String? avatarUrl,
+  }) async {
+    final User? user = _auth.currentUser;
+    if (user == null || user.uid != userId) {
+      throw StateError('Không xác định được người dùng hiện tại.');
+    }
+
+    final String normalizedDisplayName =
+        displayName?.trim().isNotEmpty == true
+            ? displayName!.trim()
+            : _displayNameFromEmail(user.email);
+    final String? normalizedAvatarUrl =
+        avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null;
+
+    await user.updateDisplayName(normalizedDisplayName);
+
+    if (normalizedAvatarUrl != null &&
+        (normalizedAvatarUrl.startsWith('http://') ||
+            normalizedAvatarUrl.startsWith('https://'))) {
+      await user.updatePhotoURL(normalizedAvatarUrl);
+    }
+
+    await user.reload();
+
+    final DocumentReference<Map<String, dynamic>> userRef = _firestore
+        .collection('users')
+        .doc(userId);
+
+    final Map<String, dynamic> payload = <String, dynamic>{
+      'displayName': normalizedDisplayName,
+      'name': normalizedDisplayName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (normalizedAvatarUrl != null) {
+      payload['avatarUrl'] = normalizedAvatarUrl;
+      payload['photoUrl'] = normalizedAvatarUrl;
+    }
+
+    await userRef.set(payload, SetOptions(merge: true));
+  }
+
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
