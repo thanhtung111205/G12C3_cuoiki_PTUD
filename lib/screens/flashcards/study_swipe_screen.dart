@@ -445,7 +445,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                       total: totalCards,
                       remembered: rememberedCards,
                       forgotten: forgottenCards,
-                      onRestart: () => _restartDeck(deck),
+                      onRestart: () => _confirmRestartDeck(deck),
                       onAdd: () => _openCardEditor(),
                     )
                   : Padding(

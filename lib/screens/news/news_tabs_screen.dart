@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -12,17 +13,9 @@ import '../../services/rss_service.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/article_card.dart';
 
-/// A two-tab screen:
-///   Tab 0 – "Tin mới"  : live RSS feed loaded with FutureBuilder.
-///   Tab 1 – "Đã lưu"   : list of locally-bookmarked articles.
-///
-/// State is managed locally (no external state manager) for UI demo purposes.
-/// Read history and bookmarks are stored as in-memory Sets/Maps and will be
-/// replaced by Firestore-backed services in the next iteration.
-
-// ── Global State (Placeholder for Firestore) ──────────────────────────────
-final Set<String> globalReadIds = {};
-final Map<String, BookmarkModel> globalBookmarks = {};
+// Global placeholder state (kept for compatibility with existing screens).
+final Set<String> globalReadIds = <String>{};
+final Map<String, BookmarkModel> globalBookmarks = <String, BookmarkModel>{};
 
 class NewsTabsScreen extends StatefulWidget {
   const NewsTabsScreen({super.key});
@@ -33,11 +26,9 @@ class NewsTabsScreen extends StatefulWidget {
 
 class _NewsTabsScreenState extends State<NewsTabsScreen>
     with SingleTickerProviderStateMixin {
-  // ── Services ──────────────────────────────────────────────────────────────
   final RssService _rssService = RssService();
   final NewsStorageService _newsStorage = NewsStorageService.instance;
 
-  // ── Future & Streams ─────────────────────────────────────────────────────────────
   late final Future<List<Article>> _newsFuture;
   StreamSubscription<Set<String>>? _readIdsSub;
   StreamSubscription<Map<String, BookmarkModel>>? _bookmarksSub;
@@ -52,27 +43,25 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
   }
 
   void _initFirestoreSync() {
-    final uid = _userId;
+    final String? uid = _userId;
     if (uid == null) return;
 
     _readIdsSub = _newsStorage.getReadArticlesStream(uid).listen((ids) {
-      if (mounted) {
-        setState(() {
-          globalReadIds
-            ..clear()
-            ..addAll(ids);
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        globalReadIds
+          ..clear()
+          ..addAll(ids);
+      });
     });
 
-    _bookmarksSub = _newsStorage.getBookmarksStream(uid).listen((bms) {
-      if (mounted) {
-        setState(() {
-          globalBookmarks
-            ..clear()
-            ..addAll(bms);
-        });
-      }
+    _bookmarksSub = _newsStorage.getBookmarksStream(uid).listen((items) {
+      if (!mounted) return;
+      setState(() {
+        globalBookmarks
+          ..clear()
+          ..addAll(items);
+      });
     });
   }
 
@@ -83,16 +72,16 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   void _markAsRead(Article article) {
-    // Attempt local optimistic update for snappiness
     setState(() {
       globalReadIds.add(article.articleId);
     });
-    if (_userId != null) {
-      _newsStorage.markAsRead(_userId!, article.articleId);
+
+    final String? uid = _userId;
+    if (uid != null) {
+      _newsStorage.markAsRead(uid, article.articleId);
     }
+
     Navigator.of(context)
         .push(
           MaterialPageRoute<void>(
@@ -100,14 +89,13 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
           ),
         )
         .then((_) {
-          // Refresh list to update bookmark icons if changed inside the detail screen
           if (mounted) setState(() {});
         });
   }
 
   void _toggleBookmark(Article article) {
-    final uid = _userId;
-    
+    final String? uid = _userId;
+
     setState(() {
       if (globalBookmarks.containsKey(article.articleId)) {
         globalBookmarks.remove(article.articleId);
@@ -115,7 +103,7 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
           _newsStorage.removeBookmark(uid, article.articleId);
         }
       } else {
-        final bmk = BookmarkModel(
+        final BookmarkModel bmk = BookmarkModel(
           id: article.articleId,
           userId: uid ?? 'local_user',
           articleId: article.articleId,
@@ -133,8 +121,6 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
       }
     });
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -171,10 +157,6 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// APP BAR  (contains the styled TabBar)
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
   const _NewsAppBar({required this.isDark});
 
@@ -193,15 +175,14 @@ class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       title: Text(
-        'Đọc báo Tiếng Anh',
+        'Doc bao Tieng Anh',
         style: TextStyle(
           fontWeight: FontWeight.w800,
           fontSize: 20,
           color: isDark ? AppColors.darkText : AppColors.lightText,
         ),
       ),
-      // Search action – placeholder for future feature.
-      actions: [
+      actions: <Widget>[
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: IconButton(
@@ -229,17 +210,13 @@ class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
           fontSize: 14,
         ),
         tabs: const <Tab>[
-          Tab(text: 'Tin mới'),
-          Tab(text: 'Đã lưu'),
+          Tab(text: 'Tin moi'),
+          Tab(text: 'Da luu'),
         ],
       ),
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TAB 0 – NEWS FEED
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _NewsFeedTab extends StatelessWidget {
   const _NewsFeedTab({
@@ -260,38 +237,33 @@ class _NewsFeedTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder<List<Article>>(
       future: newsFuture,
-      builder: (context, snapshot) {
-        // ── Loading ──────────────────────────────────────────────────────
+      builder: (BuildContext context, AsyncSnapshot<List<Article>> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _LoadingShimmer();
+          return const Center(child: CircularProgressIndicator());
         }
 
-        // ── Error ────────────────────────────────────────────────────────
         if (snapshot.hasError) {
           return _ErrorView(message: snapshot.error.toString());
         }
 
-        // ── Empty ────────────────────────────────────────────────────────
-        final List<Article> articles = snapshot.data ?? [];
+        final List<Article> articles = snapshot.data ?? <Article>[];
         if (articles.isEmpty) {
           return const _EmptyView(
             icon: Icons.newspaper_rounded,
-            message: 'Không có bài báo nào.\nVui lòng kiểm tra kết nối mạng.',
+            message: 'Khong co bai bao nao.\nVui long kiem tra ket noi mang.',
           );
         }
 
-        // ── Article list ─────────────────────────────────────────────────
         return RefreshIndicator(
           color: AppColors.deepPurple,
           onRefresh: () async {
-            // In a real app, invalidate the cache and re-fetch here.
             print('Refresh news feed');
           },
           child: ListView.builder(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             physics: const BouncingScrollPhysics(),
             itemCount: articles.length,
-            itemBuilder: (context, index) {
+            itemBuilder: (BuildContext context, int index) {
               final Article article = articles[index];
               return ArticleCard(
                 article: article,
@@ -307,10 +279,6 @@ class _NewsFeedTab extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TAB 1 – BOOKMARKS
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _BookmarksTab extends StatelessWidget {
   const _BookmarksTab({
@@ -330,15 +298,14 @@ class _BookmarksTab extends StatelessWidget {
     if (bookmarks.isEmpty) {
       return const _EmptyView(
         icon: Icons.bookmark_border_rounded,
-        message: 'Chưa có bài báo nào được lưu.\nBấm 🔖 để lưu bài yêu thích!',
+        message:
+            'Chua co bai bao nao duoc luu.\nBam bookmark de luu bai yeu thich!',
       );
     }
 
-    // Reconstruct lightweight Article objects from BookmarkModel data
-    // so we can reuse the ArticleCard widget without code duplication.
     final List<Article> saved = bookmarks.values
         .map(
-          (b) => Article(
+          (BookmarkModel b) => Article(
             articleId: b.articleId,
             title: b.title,
             source: b.source,
@@ -347,13 +314,13 @@ class _BookmarksTab extends StatelessWidget {
             imageUrl: b.thumbnailUrl,
           ),
         )
-        .toList();
+        .toList(growable: false);
 
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8, bottom: 24),
       physics: const BouncingScrollPhysics(),
       itemCount: saved.length,
-      itemBuilder: (context, index) {
+      itemBuilder: (BuildContext context, int index) {
         final Article article = saved[index];
         return ArticleCard(
           article: article,
@@ -363,128 +330,6 @@ class _BookmarksTab extends StatelessWidget {
           onBookmarkToggle: () => onBookmarkToggle(article),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility views
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Animated placeholder cards shown while the RSS future resolves.
-class _LoadingShimmer extends StatefulWidget {
-  const _LoadingShimmer();
-
-  @override
-  State<_LoadingShimmer> createState() => _LoadingShimmerState();
-}
-
-class _LoadingShimmerState extends State<_LoadingShimmer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.35,
-      end: 0.75,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, v) {
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 8),
-          itemCount: 6,
-          itemBuilder: (ctx, i) =>
-              _ShimmerCard(opacity: _anim.value, isDark: isDark),
-        );
-      },
-    );
-  }
-}
-
-class _ShimmerCard extends StatelessWidget {
-  const _ShimmerCard({required this.opacity, required this.isDark});
-
-  final double opacity;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color base = isDark
-        ? Colors.white.withValues(alpha: opacity * 0.15)
-        : Colors.black.withValues(alpha: opacity * 0.08);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 86,
-            height: 86,
-            decoration: BoxDecoration(
-              color: base,
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 60,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: base,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: base,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  width: 140,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: base,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -509,7 +354,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Không tải được tin tức',
+              'Khong tai duoc tin tuc',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.lightText,
@@ -539,6 +384,7 @@ class _EmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

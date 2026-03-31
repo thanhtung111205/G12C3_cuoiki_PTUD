@@ -1,13 +1,9 @@
 // ignore_for_file: avoid_print
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/article_model.dart';
-import '../../services/dictionary_service.dart';
 import '../../utils/app_colors.dart';
-import '../../widgets/dictionary_popup_overlay.dart';
-import '../../widgets/smart_save_bottom_sheet.dart';
 import '../../translation/context_translation_widget.dart';
 import '../../translation/translation_service.dart';
 import '../../translation/translation_viewmodel.dart';
@@ -26,25 +22,13 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  // ── Services ─────────────────────────────────────────────────────────────
-  final DictionaryService _dictionaryService = DictionaryService();
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
   // ── Local state ───────────────────────────────────────────────────────────
   late bool _isBookmarked;
-  String _currentLookupWord = '';
 
   @override
   void initState() {
     super.initState();
     _isBookmarked = globalBookmarks.containsKey(widget.article.articleId);
-  }
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -70,50 +54,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}'
         '  ·  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
-
-  // ── Selection → Dictionary ────────────────────────────────────────────────
-
-  void _onSelectionChanged(
-    TextSelection selection,
-    SelectionChangedCause? cause,
-  ) {
-    if (selection.start < 0 || selection.end <= selection.start) return;
-
-    final String selectedText = _bodyText.substring(
-      selection.start,
-      selection.end,
-    );
-
-    // Strip punctuation; keep only word characters
-    final String word = selectedText.replaceAll(RegExp(r'[^\w]'), '').trim();
-
-    if (word.isNotEmpty && !word.contains(' ') && word != _currentLookupWord) {
-      _currentLookupWord = word;
-      print('Đã bôi đen từ: $word');
-      _showDictionaryPopup(word);
-    }
-  }
-
-  void _showDictionaryPopup(String selectedText) {
-    _lookupWord(selectedText);
-  }
-
-  Future<void> _lookupWord(String word) async {
-    if (!mounted) return;
-
-    await showDictionaryPopupOverlay(
-      context: context,
-      word: word,
-      dictionaryService: _dictionaryService,
-      audioPlayer: _audioPlayer,
-      onSave: (BuildContext sheetContext, entry) {
-        Navigator.pop(sheetContext);
-        showSmartSaveBottomSheet(context, word: entry.word);
-      },
-      onLookupError: () => _currentLookupWord = '',
-      onClosed: () => _currentLookupWord = '',
-    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -165,7 +105,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               setState(() {
                 _isBookmarked = !_isBookmarked;
                 final uid = FirebaseAuth.instance.currentUser?.uid;
-                
+
                 if (_isBookmarked) {
                   final bmk = BookmarkModel(
                     id: widget.article.articleId,
@@ -185,7 +125,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 } else {
                   globalBookmarks.remove(widget.article.articleId);
                   if (uid != null) {
-                    NewsStorageService.instance.removeBookmark(uid, widget.article.articleId);
+                    NewsStorageService.instance.removeBookmark(
+                      uid,
+                      widget.article.articleId,
+                    );
                   }
                 }
               });
@@ -283,7 +226,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ContextTranslationWidget(
                     text: _bodyText,
                     viewModel: TranslationViewModel(
-                      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+                      service: TranslationService(
+                        endpoint: 'https://api.mymemory.translated.net/get',
+                      ),
                     ),
                   ),
 

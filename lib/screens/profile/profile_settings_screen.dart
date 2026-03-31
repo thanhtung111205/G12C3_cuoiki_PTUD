@@ -28,7 +28,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _reminderEnabled = true;
   bool _isLoadingProfile = true;
-  bool _isSavingProfile = false;
   Map<String, dynamic>? _profileData;
 
   @override
@@ -127,23 +126,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
-    final _EditProfileResult? result = await showModalBottomSheet<_EditProfileResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext sheetContext) {
-        return _EditProfileSheet(
-          initialName: _displayName,
-          initialEmail: _email,
-          initialAvatar: _avatarValue,
-          onPickAvatarUri: _pickAvatarDataUri,
+    final _EditProfileResult? result =
+        await showModalBottomSheet<_EditProfileResult>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (BuildContext sheetContext) {
+            return _EditProfileSheet(
+              initialName: _displayName,
+              initialEmail: _email,
+              initialAvatar: _avatarValue,
+              onPickAvatarUri: _pickAvatarDataUri,
+            );
+          },
         );
-      },
-    );
 
     if (result == null || !mounted) return;
 
-    setState(() => _isSavingProfile = true);
     try {
       await AuthService.instance.updateUserProfile(
         userId: user.uid,
@@ -172,13 +171,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SnackBar(content: Text('Không thể lưu hồ sơ: $error')),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingProfile = false);
-      }
-    }
+    } finally {}
   }
-
 
   Future<void> _confirmLogout(BuildContext context) async {
     final bool shouldLogout =
@@ -460,7 +454,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       );
       return;
     }
-    Navigator.of(context).pop(_EditProfileResult(name: name, avatarUrl: _selectedAvatar));
+    Navigator.of(
+      context,
+    ).pop(_EditProfileResult(name: name, avatarUrl: _selectedAvatar));
   }
 
   @override
