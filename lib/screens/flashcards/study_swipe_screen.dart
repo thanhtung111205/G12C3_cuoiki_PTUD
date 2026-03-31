@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/flashcard_provider.dart';
 import '../../services/dictionary_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/flashcard_haptics.dart';
 import '../../utils/shake_detector.dart';
 import '../../widgets/flashcard_item_card.dart';
 
@@ -71,15 +72,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       _frontIndex = 0; // reset to first card after shuffle
     });
 
-    // provide haptic feedback
-    // Use a stronger impact for clearer feedback on supported devices
-    try {
-      HapticFeedback.heavyImpact();
-      Future<void>.delayed(
-        const Duration(milliseconds: 40),
-        () => HapticFeedback.mediumImpact(),
-      );
-    } catch (_) {}
+    FlashcardHaptics.shuffle();
 
     // run a short visual pulse animation
     _shakeAnimController
@@ -348,6 +341,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
             _provider.deckById(_deckId) ?? _provider.activeDeck;
         final FlashcardCard? currentCard = _currentCard(deck);
         final int totalCards = deck.cards.length;
+        final bool compactHeight = MediaQuery.sizeOf(context).height < 720;
         final int reviewedCards = deck.reviewedCount;
         final double progress = deck.progress;
         final bool isCompleted = _isDeckCompleted(deck);
@@ -462,11 +456,11 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                 )
                                 .length,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: compactHeight ? 10 : 16),
                           Expanded(
                             child: Center(
                               child: AspectRatio(
-                                aspectRatio: 0.78,
+                                aspectRatio: compactHeight ? 0.66 : 0.78,
                                 child: ScaleTransition(
                                   scale: _shakeScale,
                                   child: CardSwiper(
@@ -512,6 +506,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                             ),
                           ),
                           const SizedBox(height: 18),
+                          SizedBox(height: compactHeight ? 10 : 18),
                           if (currentCard != null)
                             _ActionRow(
                               onDelete: () =>

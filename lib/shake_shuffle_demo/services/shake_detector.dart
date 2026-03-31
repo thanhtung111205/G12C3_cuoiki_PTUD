@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// ShakeDetector - listens to accelerometer events and emits a simple "shake" event
@@ -53,8 +52,6 @@ class ShakeDetector {
       if (_peakTimestamps.length >= shakeCount) {
         if (_lastShakeAt == null || now.difference(_lastShakeAt!) > debounceDuration) {
           _lastShakeAt = now;
-          // Haptic feedback
-          HapticFeedback.mediumImpact();
           // Emit event
           _onShakeController.add(null);
           // clear peaks to avoid immediate repeat
