@@ -19,10 +19,11 @@ class FlashcardStudyScreen extends StatefulWidget {
 
 class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   final FlashcardProvider _provider = FlashcardProvider.instance;
-  final CardSwiperController _swiperController = CardSwiperController();
+  CardSwiperController _swiperController = CardSwiperController();
 
   late String _deckId;
   int _frontIndex = 0;
+  int _swiperSession = 0;
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
@@ -41,6 +42,58 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     if (deck.cards.isEmpty) return null;
     final int safeIndex = _frontIndex.clamp(0, deck.cards.length - 1);
     return deck.cards[safeIndex];
+  }
+
+  bool _isDeckCompleted(FlashcardDeck deck) {
+    return deck.cards.isNotEmpty && deck.reviewedCount >= deck.cards.length;
+  }
+
+  Future<void> _restartDeck(FlashcardDeck deck) async {
+    final String? userId = _userId;
+    if (userId == null) return;
+
+    await _provider.restartDeck(userId, deck.id);
+    if (!mounted) return;
+
+    setState(() {
+      _frontIndex = 0;
+      _swiperController = CardSwiperController();
+      _swiperSession += 1;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã đưa bộ thẻ về trạng thái ban đầu.')),
+    );
+  }
+
+  Future<void> _confirmRestartDeck(FlashcardDeck deck) async {
+    if (deck.cards.isEmpty) return;
+
+    final bool shouldRestart = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('Học lại từ đầu'),
+              content: const Text(
+                'Thao tác này sẽ đưa toàn bộ thẻ về trạng thái chưa học. Bạn có muốn tiếp tục không?',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Restart'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!shouldRestart) return;
+    await _restartDeck(deck);
   }
 
   bool _onSwipe(
@@ -205,6 +258,13 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
         final int totalCards = deck.cards.length;
         final int reviewedCards = deck.reviewedCount;
         final double progress = deck.progress;
+        final bool isCompleted = _isDeckCompleted(deck);
+        final int rememberedCards = deck.cards
+          .where((FlashcardCard card) => card.rememberedLastTime == true)
+          .length;
+        final int forgottenCards = deck.cards
+          .where((FlashcardCard card) => card.rememberedLastTime == false)
+          .length;
 
         return Scaffold(
           backgroundColor: AppColors.pastelPink,
@@ -221,6 +281,13 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
             ),
             iconTheme: const IconThemeData(color: AppColors.deepPurple),
             actions: <Widget>[
+              IconButton(
+                onPressed: totalCards == 0
+                    ? null
+                    : () => _confirmRestartDeck(deck),
+                icon: const Icon(Icons.restart_alt_rounded),
+                tooltip: 'Học lại từ đầu',
+              ),
               IconButton(
                 onPressed: () => _openCardEditor(),
                 icon: const Icon(Icons.add_rounded),
@@ -279,8 +346,17 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                   end: Alignment.bottomCenter,
                 ),
               ),
-              child: totalCards == 0
+                child: totalCards == 0
                   ? _EmptyStudyState(onAdd: () => _openCardEditor())
+                    : isCompleted
+                        ? _CompletedStudyState(
+                            reviewed: reviewedCards,
+                            total: totalCards,
+                            remembered: rememberedCards,
+                            forgotten: forgottenCards,
+                            onRestart: () => _restartDeck(deck),
+                            onAdd: () => _openCardEditor(),
+                          )
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                       child: Column(
@@ -301,6 +377,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                               child: AspectRatio(
                                 aspectRatio: 0.78,
                                 child: CardSwiper(
+                                  key: ValueKey<int>(_swiperSession),
                                   controller: _swiperController,
                                   cardsCount: deck.cards.length,
                                   numberOfCardsDisplayed: deck.cards.length < 2
@@ -632,6 +709,153 @@ class _EmptyStudyState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompletedStudyState extends StatelessWidget {
+  const _CompletedStudyState({
+    required this.reviewed,
+    required this.total,
+    required this.remembered,
+    required this.forgotten,
+    required this.onRestart,
+    required this.onAdd,
+  });
+
+  final int reviewed;
+  final int total;
+  final int remembered;
+  final int forgotten;
+  final VoidCallback onRestart;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.deepPurple.withValues(alpha: 0.10),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.verified_rounded,
+                color: AppColors.deepPurple,
+                size: 42,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Bạn đã học hết bộ flashcard này',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.deepPurple,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Đã hoàn thành $reviewed/$total thẻ. Bấm restart để học lại từ đầu.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.lightTextSecondary,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: <Widget>[
+                _SummaryChip(
+                  icon: Icons.check_circle_rounded,
+                  label: 'Nhớ $remembered',
+                  color: Colors.green,
+                ),
+                _SummaryChip(
+                  icon: Icons.close_rounded,
+                  label: 'Quên $forgotten',
+                  color: Colors.deepOrangeAccent,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onRestart,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.deepPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
+              ),
+              icon: const Icon(Icons.restart_alt_rounded),
+              label: const Text('Restart bộ thẻ'),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Thêm flashcard mới'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

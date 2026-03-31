@@ -331,6 +331,34 @@ class FlashcardProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> restartDeck(String userId, String deckId) async {
+    final QuerySnapshot<Map<String, dynamic>> cardsSnapshot = await _cardCollection(
+      userId,
+      deckId,
+    ).get();
+
+    if (cardsSnapshot.docs.isNotEmpty) {
+      for (int index = 0; index < cardsSnapshot.docs.length; index += 400) {
+        final WriteBatch batch = _firestore.batch();
+        final int end = math.min(index + 400, cardsSnapshot.docs.length);
+        for (int i = index; i < end; i++) {
+          batch.update(cardsSnapshot.docs[i].reference, <String, dynamic>{
+            'isReviewed': false,
+            'rememberedLastTime': null,
+            'reviewedAt': null,
+            'updatedAt': Timestamp.now(),
+          });
+        }
+        await batch.commit();
+      }
+    }
+
+    await _deckDoc(userId, deckId).set(<String, dynamic>{
+      'reviewedCount': 0,
+      'updatedAt': Timestamp.now(),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> markCardReviewed(
     String userId,
     String deckId,
