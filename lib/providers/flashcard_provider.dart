@@ -399,6 +399,28 @@ class FlashcardProvider extends ChangeNotifier {
     });
   }
 
+  /// Shuffle the cards for a given deck locally and notify listeners.
+  /// This does not persist order to Firestore (cards order is derived from createdAt).
+  /// The shuffle is local only to improve UX during a study session.
+  void shuffleDeck(String deckId) {
+    final FlashcardDeck? deck = _decks[deckId];
+    if (deck == null) return;
+    deck.cards.shuffle();
+    // reset front index if necessary is handled by caller (UI)
+    notifyListeners();
+  }
+
+  /// Replace the in-memory order of cards for the given deck and notify listeners.
+  /// Use this for undoing a local shuffle. This does not persist changes to Firestore.
+  void setDeckOrder(String deckId, List<FlashcardCard> cards) {
+    final FlashcardDeck? deck = _decks[deckId];
+    if (deck == null) return;
+    deck.cards
+      ..clear()
+      ..addAll(cards);
+    notifyListeners();
+  }
+
   String _generateExampleSentence(String english, String meaning) {
     final String normalizedEnglish = english.trim();
     final String normalizedMeaning = meaning.trim();
