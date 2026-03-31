@@ -12,89 +12,52 @@ import 'translation/translation_demo_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase first so Firebase-dependent screens don't race on startup.
+  // Initialize Firebase with a shorter timeout and better error handling
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 12));
-  } on TimeoutException catch (error) {
-    debugPrint('Firebase initialize timeout: $error');
-  } catch (error, stackTrace) {
-    debugPrint('Firebase initialize error: $error');
-    debugPrintStack(stackTrace: stackTrace);
+    ).timeout(const Duration(seconds: 8)); // Reduced from 12s to 8s
+  } catch (error) {
+    debugPrint('Firebase initialization failed: $error');
+    // We still continue to runApp, screens will handle missing Firebase state
   }
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _AppRoot();
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class _AppRoot extends StatefulWidget {
-  const _AppRoot();
-
-  @override
-  State<_AppRoot> createState() => _AppRootState();
-}
-
-class _AppRootState extends State<_AppRoot> {
-  final ValueNotifier<ThemeMode> _themeModeNotifier =
-      ValueNotifier<ThemeMode>(ThemeMode.light);
+class _MyAppState extends State<MyApp> {
+  final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
 
   void _toggleTheme() {
     _themeModeNotifier.value =
-        _themeModeNotifier.value == ThemeMode.light
-            ? ThemeMode.dark
-            : ThemeMode.light;
+        _themeModeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
   }
 
-  ThemeData _buildLightTheme() {
+  ThemeData _buildTheme(Brightness brightness) {
+    final bool isDark = brightness == Brightness.dark;
     final ColorScheme colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.deepPurple,
-      brightness: Brightness.light,
+      brightness: brightness,
     ).copyWith(
-      primary: AppColors.deepPurple,
-      secondary: AppColors.periwinkle,
-      tertiary: AppColors.lavender,
-      surface: Colors.white,
-      onSurface: const Color(0xFF231A3D),
+      primary: isDark ? AppColors.periwinkle : AppColors.deepPurple,
+      secondary: isDark ? AppColors.deepPurple : AppColors.periwinkle,
+      tertiary: isDark ? const Color(0xFF2A223D) : AppColors.lavender,
+      surface: isDark ? const Color(0xFF121212) : Colors.white,
+      onSurface: isDark ? const Color(0xFFEDE7FF) : const Color(0xFF231A3D),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: Colors.white,
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-      ),
-    );
-  }
-
-  ThemeData _buildDarkTheme() {
-    final ColorScheme colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.deepPurple,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: AppColors.periwinkle,
-      secondary: AppColors.deepPurple,
-      tertiary: const Color(0xFF2A223D),
-      surface: const Color(0xFF121212),
-      onSurface: const Color(0xFFEDE7FF),
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFF101014),
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-      ),
+      scaffoldBackgroundColor: isDark ? const Color(0xFF101014) : Colors.white,
+      appBarTheme: const AppBarTheme(elevation: 0, centerTitle: true),
     );
   }
 
@@ -112,11 +75,9 @@ class _AppRootState extends State<_AppRoot> {
         return MaterialApp(
           title: 'Smart Document & Vocab',
           debugShowCheckedModeBanner: false,
-          theme: _buildLightTheme(),
-          darkTheme: _buildDarkTheme(),
+          theme: _buildTheme(Brightness.light),
+          darkTheme: _buildTheme(Brightness.dark),
           themeMode: themeMode,
-          themeAnimationDuration: const Duration(milliseconds: 350),
-          themeAnimationCurve: Curves.easeInOutCubic,
           // App home — use auth state to pick Home or Auth screen.
           home: StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
@@ -135,9 +96,8 @@ class _AppRootState extends State<_AppRoot> {
               return const AuthScreen();
             },
           ),
-          // For development: keep demo route available at '/translate_demo'
           routes: {
-           '/translate_demo': (_) => const TranslationDemoScreen(),
+            '/translate_demo': (_) => const TranslationDemoScreen(),
           },
         );
       },
