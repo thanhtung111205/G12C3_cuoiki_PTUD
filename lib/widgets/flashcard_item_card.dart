@@ -61,6 +61,14 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color accent = theme.colorScheme.primary;
+    final Color softAccent = isDark ? AppColors.darkCard : AppColors.lavender;
+
     final bool hasAudio = widget.card.audioUrl != null && widget.card.audioUrl!.isNotEmpty;
 
     return _CardSurface(
@@ -74,7 +82,7 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
               height: 96,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.lavender.withOpacity(0.85),
+                color: softAccent.withOpacity(0.85),
               ),
             ),
           ),
@@ -90,17 +98,21 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: hasAudio
-                      ? (_playing ? AppColors.deepPurple.withOpacity(0.18) : AppColors.pastelPink)
-                      : Colors.grey.withOpacity(0.10),
+                      ? (_playing
+                          ? accent.withOpacity(0.18)
+                          : softAccent.withOpacity(0.7))
+                      : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.10)),
                   border: Border.all(
-                    color: hasAudio ? AppColors.periwinkle.withOpacity(0.40) : Colors.grey.withOpacity(0.18),
+                    color: hasAudio
+                        ? accent.withOpacity(0.40)
+                        : (isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.18)),
                     width: 1.5,
                   ),
                 ),
                 child: Icon(
                   _playing ? Icons.volume_up_rounded : Icons.volume_up_outlined,
                   size: 22,
-                  color: hasAudio ? AppColors.deepPurple : Colors.grey.withOpacity(0.35),
+                  color: hasAudio ? accent : secondaryText.withOpacity(0.45),
                 ),
               ),
             ),
@@ -114,19 +126,19 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
                 Text(
                   widget.card.english,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.05, color: AppColors.deepPurple),
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.05, color: primaryText),
                 ),
                 if (widget.card.phonetic != null && widget.card.phonetic!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(widget.card.phonetic!, style: const TextStyle(fontSize: 16, color: AppColors.periwinkle, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500)),
+                  Text(widget.card.phonetic!, style: TextStyle(fontSize: 16, color: accent, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500)),
                 ],
                 const SizedBox(height: 12),
-                Text('Chạm để lật thẻ', style: TextStyle(color: AppColors.lightTextSecondary.withOpacity(0.75), fontWeight: FontWeight.w500, fontSize: 13)),
+                Text('Chạm để lật thẻ', style: TextStyle(color: secondaryText.withOpacity(0.75), fontWeight: FontWeight.w500, fontSize: 13)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(color: AppColors.lavender, borderRadius: BorderRadius.circular(999)),
-                  child: const Text('Vuốt trái / phải để chấm điểm', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.deepPurple)),
+                  decoration: BoxDecoration(color: softAccent, borderRadius: BorderRadius.circular(999)),
+                  child: Text('Vuốt trái / phải để chấm điểm', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: primaryText)),
                 ),
               ],
             ),
@@ -194,6 +206,13 @@ class _FlashcardBackFaceState extends State<_FlashcardBackFace> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color accent = theme.colorScheme.primary;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     final String displayExample = _smartExample ?? widget.card.example;
     final bool hasExample = displayExample.isNotEmpty && !displayExample.contains('I use');
 
@@ -205,20 +224,23 @@ class _FlashcardBackFaceState extends State<_FlashcardBackFace> {
           children: <Widget>[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: AppColors.lavender, borderRadius: BorderRadius.circular(999)),
-              child: const Text('Mặt sau', style: TextStyle(color: AppColors.deepPurple, fontWeight: FontWeight.w800)),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkCard : AppColors.lavender,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text('Mặt sau', style: TextStyle(color: accent, fontWeight: FontWeight.w800)),
             ),
             const SizedBox(height: 22),
-            Text(widget.card.meaning, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))),
+            Text(widget.card.meaning, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: primaryText)),
             const SizedBox(height: 18),
-            const Text('Câu ví dụ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.lightTextSecondary, letterSpacing: 0.3)),
+            Text('Câu ví dụ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: secondaryText, letterSpacing: 0.3)),
             const SizedBox(height: 10),
             Expanded(
               child: _isLoading 
-                ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.periwinkle)))
+                ? Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: accent)))
                 : (hasExample 
                     ? SingleChildScrollView(child: _HighlightedSentence(sentence: displayExample, targetWord: widget.card.english))
-                    : const Center(child: Text('Chưa có câu ví dụ.', style: TextStyle(color: AppColors.lightTextSecondary, fontSize: 15)))
+                    : Center(child: Text('Chưa có câu ví dụ.', style: TextStyle(color: secondaryText, fontSize: 15)))
                   ),
             ),
           ],
@@ -235,6 +257,11 @@ class _HighlightedSentence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color accent = theme.colorScheme.primary;
+
     final RegExp pattern = RegExp(RegExp.escape(targetWord), caseSensitive: false);
     final List<InlineSpan> spans = <InlineSpan>[];
     int cursor = 0;
@@ -245,8 +272,11 @@ class _HighlightedSentence extends StatelessWidget {
         alignment: PlaceholderAlignment.middle,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(color: AppColors.lavender, borderRadius: BorderRadius.circular(8)),
-          child: Text(sentence.substring(match.start, match.end), style: const TextStyle(color: AppColors.deepPurple, fontWeight: FontWeight.w800)),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : AppColors.lavender,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(sentence.substring(match.start, match.end), style: TextStyle(color: accent, fontWeight: FontWeight.w800)),
         ),
       ));
       cursor = match.end;
@@ -255,7 +285,7 @@ class _HighlightedSentence extends StatelessWidget {
 
     return RichText(
       text: TextSpan(
-        style: const TextStyle(color: AppColors.lightText, fontSize: 18, height: 1.6, fontWeight: FontWeight.w500),
+        style: TextStyle(color: primaryText, fontSize: 18, height: 1.6, fontWeight: FontWeight.w500),
         children: spans,
       ),
     );
@@ -267,13 +297,20 @@ class _CardSurface extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color surface = isDark ? AppColors.darkCard : Colors.white;
+    final Color border = isDark ? Colors.white.withOpacity(0.08) : AppColors.lavender;
+    final Color shadow = isDark
+        ? Colors.black.withOpacity(0.32)
+        : AppColors.deepPurple.withOpacity(0.12);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.lavender),
+        border: Border.all(color: border),
         boxShadow: <BoxShadow>[
-          BoxShadow(color: AppColors.deepPurple.withOpacity(0.12), blurRadius: 26, offset: const Offset(0, 14)),
+          BoxShadow(color: shadow, blurRadius: 26, offset: const Offset(0, 14)),
         ],
       ),
       child: ClipRRect(borderRadius: BorderRadius.circular(28), child: child),

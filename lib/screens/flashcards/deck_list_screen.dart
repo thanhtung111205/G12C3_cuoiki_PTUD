@@ -26,22 +26,24 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBackground =
+        isDark ? AppColors.darkBackground : AppColors.pastelPink;
+    final Color pageForeground = isDark ? AppColors.darkText : AppColors.deepPurple;
     final String? userId = _userId;
 
     return Scaffold(
-      backgroundColor: AppColors.pastelPink,
+      backgroundColor: pageBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.pastelPink,
+        backgroundColor: pageBackground,
+        foregroundColor: pageForeground,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
           'Bộ từ vựng của tôi',
-          style: TextStyle(
-            color: AppColors.deepPurple,
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
-        iconTheme: const IconThemeData(color: AppColors.deepPurple),
+        iconTheme: IconThemeData(color: pageForeground),
         actions: <Widget>[
           IconButton(
             onPressed: userId == null
@@ -171,12 +173,23 @@ class _DeckCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color surface = isDark ? AppColors.darkCard : Colors.white;
+    final Color border = isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender;
+    final Color titleColor = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color shadow = isDark
+        ? Colors.black.withValues(alpha: 0.32)
+        : AppColors.deepPurple.withValues(alpha: 0.06);
+
     final int reviewed = deck.reviewedCount;
     final int total = deck.cards.length;
     final double progress = deck.progress;
 
     return Material(
-      color: Colors.white,
+      color: surface,
       borderRadius: BorderRadius.circular(22),
       elevation: 0,
       child: InkWell(
@@ -186,10 +199,10 @@ class _DeckCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.lavender),
+            border: Border.all(color: border),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: AppColors.deepPurple.withValues(alpha: 0.06),
+                color: shadow,
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -219,37 +232,31 @@ class _DeckCard extends StatelessWidget {
                       deck.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.deepPurple,
+                        color: titleColor,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      total == 1 ? '1 thẻ' : '$total thẻ',
-                      style: const TextStyle(
-                        color: AppColors.lightTextSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text(total == 1 ? '1 thẻ' : '$total thẻ', style: TextStyle(color: secondaryText, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 8,
-                        backgroundColor: AppColors.lavender,
+                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender,
                         color: AppColors.periwinkle,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       total == 0 ? 'Chưa có thẻ' : 'Đã ôn $reviewed/$total thẻ',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.lightTextSecondary,
+                        color: secondaryText,
                       ),
                     ),
                   ],
@@ -288,6 +295,13 @@ class _EmptyDeckState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color surface = isDark ? AppColors.darkCard : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -298,11 +312,11 @@ class _EmptyDeckState extends StatelessWidget {
               width: 92,
               height: 92,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surface,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: AppColors.deepPurple.withValues(alpha: 0.08),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -318,18 +332,15 @@ class _EmptyDeckState extends StatelessWidget {
             Text(
               'Chưa có bộ từ vựng nào',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: AppColors.deepPurple,
+                color: primaryText,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Hãy thêm dữ liệu mẫu hoặc tạo bộ mới để bắt đầu học.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.lightTextSecondary,
-                height: 1.45,
-              ),
+              style: TextStyle(color: secondaryText, height: 1.45),
             ),
             if (onAdd != null) ...<Widget>[
               const SizedBox(height: 16),
