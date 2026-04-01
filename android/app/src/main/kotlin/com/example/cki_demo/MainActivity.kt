@@ -20,7 +20,7 @@ class MainActivity : FlutterActivity() {
 			.setMethodCallHandler { call, result ->
 				when (call.method) {
 					"vibrate" -> {
-						val durationMs = call.argument<Int>("durationMs")?.toLong() ?: 70L
+						val durationMs = call.argument<Int>("durationMs")?.toLong() ?: 150L
 						vibrate(durationMs)
 						result.success(null)
 					}
@@ -31,6 +31,7 @@ class MainActivity : FlutterActivity() {
 	}
 
 	private fun vibrate(durationMs: Long) {
+		// Kích hoạt phản hồi xúc giác mạnh hơn từ hệ thống
 		window?.decorView?.performHapticFeedback(
 			HapticFeedbackConstants.LONG_PRESS,
 			HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
@@ -47,15 +48,15 @@ class MainActivity : FlutterActivity() {
 		if (!vibrator.hasVibrator()) return
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			vibrator.vibrate(
-				VibrationEffect.createWaveform(
-					longArrayOf(0L, durationMs, 45L, durationMs / 2),
-					-1,
-				),
-			)
+			// Tạo kiểu rung "kép" mạnh mẽ với biên độ tối đa (255)
+			// timings: nghỉ 0ms, rung durationMs, nghỉ 50ms, rung tiếp durationMs
+			val timings = longArrayOf(0L, durationMs, 50L, durationMs)
+			val amplitudes = intArrayOf(0, 255, 0, 255) // 255 là mức rung mạnh nhất
+			
+			vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
 		} else {
 			@Suppress("DEPRECATION")
-			vibrator.vibrate(durationMs + 60L)
+			vibrator.vibrate(durationMs + 100L)
 		}
 	}
 }

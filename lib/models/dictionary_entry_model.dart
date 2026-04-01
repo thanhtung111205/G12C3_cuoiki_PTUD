@@ -3,6 +3,7 @@ class DictionaryEntry {
   final String phonetic;
   final String partOfSpeech;
   final String definition;
+  final String example;
   final String audioUrl;
 
   const DictionaryEntry({
@@ -10,6 +11,7 @@ class DictionaryEntry {
     this.phonetic = '',
     this.partOfSpeech = '',
     this.definition = '',
+    this.example = '',
     this.audioUrl = '',
   });
 
@@ -18,6 +20,7 @@ class DictionaryEntry {
     String? phonetic,
     String? partOfSpeech,
     String? definition,
+    String? example,
     String? audioUrl,
   }) {
     return DictionaryEntry(
@@ -25,6 +28,7 @@ class DictionaryEntry {
       phonetic: phonetic ?? this.phonetic,
       partOfSpeech: partOfSpeech ?? this.partOfSpeech,
       definition: definition ?? this.definition,
+      example: example ?? this.example,
       audioUrl: audioUrl ?? this.audioUrl,
     );
   }
@@ -35,6 +39,7 @@ class DictionaryEntry {
       phonetic: map['phonetic'] as String? ?? '',
       partOfSpeech: map['partOfSpeech'] as String? ?? '',
       definition: map['definition'] as String? ?? '',
+      example: map['example'] as String? ?? '',
       audioUrl: map['audioUrl'] as String? ?? '',
     );
   }
@@ -45,6 +50,7 @@ class DictionaryEntry {
       'phonetic': phonetic,
       'partOfSpeech': partOfSpeech,
       'definition': definition,
+      'example': example,
       'audioUrl': audioUrl,
     };
   }

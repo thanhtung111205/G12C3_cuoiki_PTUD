@@ -100,16 +100,37 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     // Shuffle locally
     _provider.shuffleDeck(deck.id);
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentMaterialBanner()
-      ..showMaterialBanner(
-        MaterialBanner(
-          content: Text('Đã xáo trộn thứ tự thẻ — Lần lắc: $_shakeCount'),
-          leading: const Icon(Icons.shuffle_rounded),
-          actions: [
+    // Hiển thị thông báo nhỏ gọn ở bên dưới
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.deepPurple.withOpacity(0.85),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.12), width: 1), // Viền mờ nhẹ
+        ),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        content: Row(
+          children: [
+            const Icon(Icons.shuffle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Đã xáo trộn thẻ',
+                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Container(
+              height: 24,
+              width: 1,
+              color: Colors.white.withOpacity(0.1),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+            ),
             TextButton(
               onPressed: () {
-                // Attempt to restore previous order (best-effort: reorder by previous ids)
                 final Map<String, FlashcardCard> map = {
                   for (var c in deck.cards) c.id: c,
                 };
@@ -118,21 +139,25 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                     .whereType<FlashcardCard>()
                     .toList(growable: false);
                 if (restored.isNotEmpty) {
-                  // Use provider method to set order and notify listeners
                   _provider.setDeckOrder(deck.id, restored);
                 }
-                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
               },
-              child: const Text('Hoàn tác'),
-            ),
-            TextButton(
-              onPressed: () =>
-                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-              child: const Text('Đóng'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 36),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: Colors.white.withOpacity(0.2)), // Viền mờ nhẹ cho nút
+                ),
+              ),
+              child: const Text('Hoàn tác', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
-      );
+      ),
+    );
   }
 
   FlashcardDeck get _deck =>
@@ -161,7 +186,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã đưa bộ thẻ về trạng thái ban đầu.')),
+      const SnackBar(
+        content: Text('Đã đưa bộ thẻ về trạng thái ban đầu.'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -241,16 +269,13 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     if (result == null) return;
 
     if (card == null) {
-      // ── Fetch audio from dictionary (best-effort; never blocks save) ──────
       String? audioUrl;
       String? phonetic;
       try {
         final entry = await DictionaryService().lookupWord(result.english);
         if (entry.audioUrl.isNotEmpty) audioUrl = entry.audioUrl;
         if (entry.phonetic.isNotEmpty) phonetic = entry.phonetic;
-      } catch (_) {
-        // 404 or network error → silently ignore, save card without audio
-      }
+      } catch (_) {}
 
       await _provider.addCard(
         userId,
@@ -260,36 +285,6 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
         audioUrl: audioUrl,
         phonetic: phonetic,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.check_circle_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    audioUrl != null
-                        ? 'Đã thêm "${result.english}" kèm phát âm ✨'
-                        : 'Đã thêm "${result.english}" (không có audio)',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.deepPurple,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
       return;
     }
 
@@ -300,11 +295,6 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       english: result.english,
       meaning: result.meaning,
     );
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã cập nhật flashcard')));
-    }
   }
 
   void _swipeLeft() {
@@ -330,6 +320,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Đã xoá flashcard'),
+          behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'Hoàn tác',
             textColor: AppColors.periwinkle,
@@ -367,191 +358,194 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
             .where((FlashcardCard card) => card.rememberedLastTime == false)
             .length;
 
-        return LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final double cardAreaHeight =
-                compactHeight ? constraints.maxHeight * 0.54 : constraints.maxHeight * 0.62;
+        return GestureDetector(
+          onTap: () {
+            // Đóng SnackBar khi chạm ra ngoài
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+          behavior: HitTestBehavior.translucent,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final double cardAreaHeight =
+                  compactHeight ? constraints.maxHeight * 0.54 : constraints.maxHeight * 0.62;
 
-            return Scaffold(
-              backgroundColor: AppColors.pastelPink,
-              appBar: AppBar(
+              return Scaffold(
                 backgroundColor: AppColors.pastelPink,
-                elevation: 0,
-                scrolledUnderElevation: 0,
-                title: Text(
-                  deck.title,
-                  style: const TextStyle(
-                    color: AppColors.deepPurple,
-                    fontWeight: FontWeight.w800,
+                appBar: AppBar(
+                  backgroundColor: AppColors.pastelPink,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  title: Text(
+                    deck.title,
+                    style: const TextStyle(
+                      color: AppColors.deepPurple,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                iconTheme: const IconThemeData(color: AppColors.deepPurple),
-                actions: <Widget>[
-                  // Debug shuffle button (useful to test haptic & animation without physically shaking)
-                  IconButton(
-                    onPressed: _onShakeDetected,
-                    icon: const Icon(Icons.shuffle_rounded),
-                    tooltip: 'Xáo trộn (thử)',
-                  ),
-                  IconButton(
-                    onPressed: () => _openCardEditor(),
-                    icon: const Icon(Icons.add_rounded),
-                    tooltip: 'Thêm flashcard',
-                  ),
-                ],
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(42),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: Column(
-                      children: <Widget>[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            minHeight: 9,
-                            value: progress,
-                            backgroundColor: Colors.white.withValues(alpha: 0.65),
-                            color: AppColors.periwinkle,
+                  iconTheme: const IconThemeData(color: AppColors.deepPurple),
+                  actions: <Widget>[
+                    // Khôi phục nút Restart (Reset)
+                    IconButton(
+                      onPressed: () => _confirmRestartDeck(deck),
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      tooltip: 'Học lại từ đầu',
+                    ),
+                    IconButton(
+                      onPressed: _onShakeDetected,
+                      icon: const Icon(Icons.shuffle_rounded),
+                      tooltip: 'Xáo trộn',
+                    ),
+                    IconButton(
+                      onPressed: () => _openCardEditor(),
+                      icon: const Icon(Icons.add_rounded),
+                      tooltip: 'Thêm flashcard',
+                    ),
+                  ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(42),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      child: Column(
+                        children: <Widget>[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              minHeight: 9,
+                              value: progress,
+                              backgroundColor: Colors.white.withValues(alpha: 0.65),
+                              color: AppColors.periwinkle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Text(
-                              'Đã ôn $reviewedCards/$totalCards',
-                              style: const TextStyle(
-                                color: AppColors.lightTextSecondary,
-                                fontWeight: FontWeight.w600,
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                'Đã ôn $reviewedCards/$totalCards',
+                                style: const TextStyle(
+                                  color: AppColors.lightTextSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            Text(
-                              totalCards == 0
-                                  ? '0%'
-                                  : '${(progress * 100).round()}%',
-                              style: const TextStyle(
-                                color: AppColors.deepPurple,
-                                fontWeight: FontWeight.w800,
+                              Text(
+                                totalCards == 0
+                                    ? '0%'
+                                    : '${(progress * 100).round()}%',
+                                style: const TextStyle(
+                                  color: AppColors.deepPurple,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              body: SafeArea(
-                top: false,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: <Color>[AppColors.pastelPink, AppColors.lavender],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                body: SafeArea(
+                  top: false,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[AppColors.pastelPink, AppColors.lavender],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                     ),
-                  ),
-                  child: totalCards == 0
-                      ? _EmptyStudyState(onAdd: () => _openCardEditor())
-                      : isCompleted
-                      ? _CompletedStudyState(
-                          reviewed: reviewedCards,
-                          total: totalCards,
-                          remembered: rememberedCards,
-                          forgotten: forgottenCards,
-                          onRestart: () => _confirmRestartDeck(deck),
-                          onAdd: () => _openCardEditor(),
-                        )
-                      : SingleChildScrollView(
-                          physics: const ClampingScrollPhysics(),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight: constraints.maxHeight,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  _StudyHeader(
-                                    reviewed: reviewedCards,
-                                    total: totalCards,
-                                    rememberedCount: deck.cards
-                                        .where(
-                                          (FlashcardCard card) =>
-                                              card.rememberedLastTime == true,
-                                        )
-                                        .length,
-                                  ),
-                                  SizedBox(height: compactHeight ? 10 : 16),
-                                  SizedBox(
-                                    height: cardAreaHeight,
-                                    child: Center(
-                                      child: AspectRatio(
-                                        aspectRatio: compactHeight ? 0.66 : 0.78,
-                                        child: ScaleTransition(
-                                          scale: _shakeScale,
-                                          child: CardSwiper(
-                                            key: ValueKey(_swiperSession),
-                                            controller: _swiperController,
-                                            cardsCount: deck.cards.length,
-                                            numberOfCardsDisplayed:
-                                                deck.cards.length < 2
-                                                ? deck.cards.length
-                                                : 2,
-                                            isLoop: false,
-                                            duration: const Duration(milliseconds: 340),
-                                            threshold: 55,
-                                            scale: 0.95,
-                                            padding: EdgeInsets.zero,
-                                            onSwipe: _onSwipe,
-                                            onEnd: () {
-                                              HapticFeedback.mediumImpact();
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Bạn đã đi đến thẻ cuối cùng.',
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                            cardBuilder:
-                                                (
-                                                  BuildContext context,
-                                                  int index,
-                                                  int horizontalOffsetPercentage,
-                                                  int verticalOffsetPercentage,
-                                                ) {
-                                                  final FlashcardCard card =
-                                                      deck.cards[index];
-                                                  return FlashcardItemCard(card: card);
-                                                },
+                    child: totalCards == 0
+                        ? _EmptyStudyState(onAdd: () => _openCardEditor())
+                        : isCompleted
+                        ? _CompletedStudyState(
+                            reviewed: reviewedCards,
+                            total: totalCards,
+                            remembered: rememberedCards,
+                            forgotten: forgottenCards,
+                            onRestart: () => _confirmRestartDeck(deck),
+                            onAdd: () => _openCardEditor(),
+                          )
+                        : SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    _StudyHeader(
+                                      reviewed: reviewedCards,
+                                      total: totalCards,
+                                      rememberedCount: deck.cards
+                                          .where(
+                                            (FlashcardCard card) =>
+                                                card.rememberedLastTime == true,
+                                          )
+                                          .length,
+                                    ),
+                                    SizedBox(height: compactHeight ? 10 : 16),
+                                    SizedBox(
+                                      height: cardAreaHeight,
+                                      child: Center(
+                                        child: AspectRatio(
+                                          aspectRatio: compactHeight ? 0.66 : 0.78,
+                                          child: ScaleTransition(
+                                            scale: _shakeScale,
+                                            child: CardSwiper(
+                                              key: ValueKey(_swiperSession),
+                                              controller: _swiperController,
+                                              cardsCount: deck.cards.length,
+                                              numberOfCardsDisplayed:
+                                                  deck.cards.length < 2
+                                                  ? deck.cards.length
+                                                  : 2,
+                                              isLoop: false,
+                                              duration: const Duration(milliseconds: 340),
+                                              threshold: 55,
+                                              scale: 0.95,
+                                              padding: EdgeInsets.zero,
+                                              onSwipe: _onSwipe,
+                                              onEnd: () {
+                                                HapticFeedback.mediumImpact();
+                                              },
+                                              cardBuilder:
+                                                  (
+                                                    BuildContext context,
+                                                    int index,
+                                                    int horizontalOffsetPercentage,
+                                                    int verticalOffsetPercentage,
+                                                  ) {
+                                                    final FlashcardCard card =
+                                                        deck.cards[index];
+                                                    return FlashcardItemCard(card: card);
+                                                  },
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(height: compactHeight ? 10 : 18),
-                                  if (currentCard != null)
-                                    _ActionRow(
-                                      compactHeight: compactHeight,
-                                      onDelete: () =>
-                                          _deleteCurrentCard(deck, currentCard),
-                                      onForget: _swipeLeft,
-                                      onRemember: _swipeRight,
-                                      onEdit: () => _openCardEditor(card: currentCard),
-                                    ),
-                                ],
+                                    SizedBox(height: compactHeight ? 10 : 18),
+                                    if (currentCard != null)
+                                      _ActionRow(
+                                        compactHeight: compactHeight,
+                                        onDelete: () =>
+                                            _deleteCurrentCard(deck, currentCard),
+                                        onForget: _swipeLeft,
+                                        onRemember: _swipeRight,
+                                        onEdit: () => _openCardEditor(card: currentCard),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );

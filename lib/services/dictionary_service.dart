@@ -23,7 +23,7 @@ class DictionaryService {
         if (data.isNotEmpty) {
           final entry = data[0];
           
-          // Extract phonetic (try to find one with audio and text)
+          // Extract phonetic
           String phonetic = '';
           String audioUrl = '';
           
@@ -39,16 +39,33 @@ class DictionaryService {
             phonetic = entry['phonetic'];
           }
 
-          // Extract first definition
+          // Extract definition and example
           String partOfSpeech = '';
           String definitionText = '';
+          String exampleText = '';
           
           if (entry.containsKey('meanings') && entry['meanings'] is List && entry['meanings'].isNotEmpty) {
-            final meaning = entry['meanings'][0];
-            partOfSpeech = meaning['partOfSpeech'] ?? '';
-            
-            if (meaning.containsKey('definitions') && meaning['definitions'] is List && meaning['definitions'].isNotEmpty) {
-              definitionText = meaning['definitions'][0]['definition'] ?? '';
+            // Pick first part of speech/definition as primary
+            final firstMeaning = entry['meanings'][0];
+            partOfSpeech = firstMeaning['partOfSpeech'] ?? '';
+            if (firstMeaning['definitions'] is List && firstMeaning['definitions'].isNotEmpty) {
+              definitionText = firstMeaning['definitions'][0]['definition'] ?? '';
+            }
+
+            // ROBUST EXAMPLE SEARCH: Search through ALL meanings and ALL definitions
+            for (var meaning in entry['meanings']) {
+              if (meaning['definitions'] is List) {
+                for (var def in meaning['definitions']) {
+                  if (def.containsKey('example') && 
+                      def['example'] != null && 
+                      def['example'].toString().trim().isNotEmpty) {
+                    exampleText = def['example'].toString();
+                    // If we found an example, we can stop searching
+                    break; 
+                  }
+                }
+              }
+              if (exampleText.isNotEmpty) break;
             }
           }
 
@@ -57,6 +74,7 @@ class DictionaryService {
             phonetic: phonetic,
             partOfSpeech: partOfSpeech,
             definition: definitionText,
+            example: exampleText,
             audioUrl: audioUrl,
           );
         }
