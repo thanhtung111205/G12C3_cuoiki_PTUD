@@ -226,13 +226,7 @@ class FlashcardProvider extends ChangeNotifier {
       tx.set(doc, <String, dynamic>{
         'english': normalizedEnglish,
         'meaning': normalizedMeaning,
-        'example':
-            (example ??
-                    _generateExampleSentence(
-                      normalizedEnglish,
-                      normalizedMeaning,
-                    ))
-                .trim(),
+        'example': (example ?? '').trim(), // Removed _generateExampleSentence
         if (audioUrl != null && audioUrl.isNotEmpty) 'audioUrl': audioUrl,
         if (phonetic != null && phonetic.isNotEmpty) 'phonetic': phonetic,
         'isReviewed': false,
@@ -294,13 +288,7 @@ class FlashcardProvider extends ChangeNotifier {
     await _cardCollection(userId, deckId).doc(cardId).set(<String, dynamic>{
       'english': normalizedEnglish,
       'meaning': normalizedMeaning,
-      'example':
-          (example ??
-                  _generateExampleSentence(
-                    normalizedEnglish,
-                    normalizedMeaning,
-                  ))
-              .trim(),
+      'example': (example ?? '').trim(), // Removed _generateExampleSentence
       'updatedAt': Timestamp.now(),
     }, SetOptions(merge: true));
   }
@@ -421,15 +409,6 @@ class FlashcardProvider extends ChangeNotifier {
       ..clear()
       ..addAll(cards);
     notifyListeners();
-  }
-
-  String _generateExampleSentence(String english, String meaning) {
-    final String normalizedEnglish = english.trim();
-    final String normalizedMeaning = meaning.trim();
-    if (normalizedEnglish.isEmpty) {
-      return 'Example sentence will appear here.';
-    }
-    return 'I use $normalizedEnglish when I talk about $normalizedMeaning.';
   }
 }
 

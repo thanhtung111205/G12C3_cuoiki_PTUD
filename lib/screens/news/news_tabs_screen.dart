@@ -29,17 +29,35 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
   final RssService _rssService = RssService();
   final NewsStorageService _newsStorage = NewsStorageService.instance;
 
-  late final Future<List<Article>> _newsFuture;
+  Future<List<Article>>? _newsFuture;
   StreamSubscription<Set<String>>? _readIdsSub;
   StreamSubscription<Map<String, BookmarkModel>>? _bookmarksSub;
+
+  // Search logic
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  List<Article> _allArticles = [];
+  List<Article> _filteredArticles = [];
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _newsFuture = _rssService.fetchNews();
+    _loadNews();
     _initFirestoreSync();
+  }
+
+  void _loadNews() {
+    _newsFuture = _rssService.fetchNews().then((articles) {
+      if (mounted) {
+        setState(() {
+          _allArticles = articles;
+          _filteredArticles = articles;
+        });
+      }
+      return articles;
+    });
   }
 
   void _initFirestoreSync() {
@@ -69,6 +87,7 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
   void dispose() {
     _readIdsSub?.cancel();
     _bookmarksSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -122,6 +141,30 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
     });
   }
 
+  void _onSearchChanged(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredArticles = _allArticles;
+      } else {
+        _filteredArticles = _allArticles
+            .where((article) =>
+                article.title.toLowerCase().contains(query.toLowerCase()) ||
+                (article.description?.toLowerCase().contains(query.toLowerCase()) ?? false))
+            .toList();
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _filteredArticles = _allArticles;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -134,15 +177,19 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
       length: 2,
       child: Scaffold(
         backgroundColor: bgColor,
-        appBar: _NewsAppBar(isDark: isDark),
+        appBar: _buildAppBar(isDark),
         body: TabBarView(
           children: <Widget>[
             _NewsFeedTab(
               newsFuture: _newsFuture,
+              articles: _filteredArticles,
               readIds: globalReadIds,
               bookmarks: globalBookmarks,
               onTap: _markAsRead,
               onBookmarkToggle: _toggleBookmark,
+              onRefresh: () async {
+                _loadNews();
+              },
             ),
             _BookmarksTab(
               bookmarks: globalBookmarks,
@@ -155,44 +202,47 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
       ),
     );
   }
-}
 
-class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _NewsAppBar({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  Size get preferredSize =>
-      const Size.fromHeight(kToolbarHeight + kTextTabBarHeight);
-
-  @override
-  Widget build(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(bool isDark) {
     final Color surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
 
     return AppBar(
       backgroundColor: surfaceColor,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      title: Text(
-        'Doc bao Tieng Anh',
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          fontSize: 20,
-          color: isDark ? AppColors.darkText : AppColors.lightText,
-        ),
-      ),
+      title: _isSearching
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Tìm kiếm tin tức...',
+                border: InputBorder.none,
+              ),
+              style: TextStyle(
+                color: isDark ? AppColors.darkText : AppColors.lightText,
+                fontSize: 18,
+              ),
+              onChanged: _onSearchChanged,
+            )
+          : Text(
+              'Đọc báo Tiếng Anh',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                color: isDark ? AppColors.darkText : AppColors.lightText,
+              ),
+            ),
       actions: <Widget>[
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: IconButton(
             icon: Icon(
-              Icons.search_rounded,
+              _isSearching ? Icons.close_rounded : Icons.search_rounded,
               color: isDark
                   ? AppColors.darkTextSecondary
                   : AppColors.lightTextSecondary,
             ),
-            onPressed: () => print('Navigate to SearchScreen'),
+            onPressed: _toggleSearch,
           ),
         ),
       ],
@@ -210,8 +260,8 @@ class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
           fontSize: 14,
         ),
         tabs: const <Tab>[
-          Tab(text: 'Tin moi'),
-          Tab(text: 'Da luu'),
+          Tab(text: 'Tin mới'),
+          Tab(text: 'Đã lưu'),
         ],
       ),
     );
@@ -221,44 +271,49 @@ class _NewsAppBar extends StatelessWidget implements PreferredSizeWidget {
 class _NewsFeedTab extends StatelessWidget {
   const _NewsFeedTab({
     required this.newsFuture,
+    required this.articles,
     required this.readIds,
     required this.bookmarks,
     required this.onTap,
     required this.onBookmarkToggle,
+    required this.onRefresh,
   });
 
-  final Future<List<Article>> newsFuture;
+  final Future<List<Article>>? newsFuture;
+  final List<Article> articles;
   final Set<String> readIds;
   final Map<String, BookmarkModel> bookmarks;
   final void Function(Article) onTap;
   final void Function(Article) onBookmarkToggle;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
+    if (newsFuture == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return FutureBuilder<List<Article>>(
       future: newsFuture,
       builder: (BuildContext context, AsyncSnapshot<List<Article>> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && articles.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
+        if (snapshot.hasError && articles.isEmpty) {
           return _ErrorView(message: snapshot.error.toString());
         }
 
-        final List<Article> articles = snapshot.data ?? <Article>[];
         if (articles.isEmpty) {
           return const _EmptyView(
             icon: Icons.newspaper_rounded,
-            message: 'Khong co bai bao nao.\nVui long kiem tra ket noi mang.',
+            message: 'Không có bài báo nào.\nVui lòng kiểm tra kết nối mạng.',
           );
         }
 
         return RefreshIndicator(
           color: AppColors.deepPurple,
-          onRefresh: () async {
-            print('Refresh news feed');
-          },
+          onRefresh: onRefresh,
           child: ListView.builder(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             physics: const BouncingScrollPhysics(),
@@ -299,7 +354,7 @@ class _BookmarksTab extends StatelessWidget {
       return const _EmptyView(
         icon: Icons.bookmark_border_rounded,
         message:
-            'Chua co bai bao nao duoc luu.\nBam bookmark de luu bai yeu thich!',
+            'Chưa có bài báo nào được lưu.\nBấm bookmark để lưu bài yêu thích!',
       );
     }
 
@@ -354,7 +409,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Khong tai duoc tin tuc',
+              'Không tải được tin tức',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.lightText,

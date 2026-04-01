@@ -2,13 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/dictionary_service.dart';
+import '../translation/translation_service.dart';
 
 /// Lightweight service that orchestrates:
 ///   DictionaryService.lookupWord  ──▶  Firestore write (card + deck counter)
-///
-/// Firestore schema (mirrors FlashcardProvider):
-///   users/{userId}/flashcard_decks/{deckId}           ← deck doc (cardCount++)
-///   users/{userId}/flashcard_decks/{deckId}/cards/{id} ← new card doc
 class FirestoreService {
   FirestoreService._();
   static final FirestoreService instance = FirestoreService._();
@@ -17,6 +14,9 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DictionaryService _dict = DictionaryService();
+  final TranslationService _translator = TranslationService(
+    endpoint: 'https://api.mymemory.translated.net/get',
+  );
 
   // ── Path helpers ──────────────────────────────────────────────────────────
 
@@ -33,12 +33,6 @@ class FirestoreService {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Looks up [word] via the Free Dictionary API, maps the result to a
-  /// Firestore card document, and atomically saves it + increments
-  /// `cardCount` on the parent deck.
-  ///
-  /// Throws [WordNotFoundException] when the API returns 404.
-  /// Throws [FirebaseException] or generic [Exception] for other errors.
   Future<void> saveWordToDeck({
     required String word,
     required String deckId,
@@ -50,20 +44,33 @@ class FirestoreService {
     if (deckId.isEmpty) throw Exception('Deck ID cannot be empty');
 
     // ── Step 1: Lookup dictionary ─────────────────────────────────────────
-    // WordNotFoundException bubbles up if the API returns 404.
     final entry = await _dict.lookupWord(word);
 
-    // ── Step 2: Build card payload ────────────────────────────────────────
-    // Field names match FlashcardCard.fromMap() in flashcard_provider.dart.
+    // ── Step 2: Handle Example & Translation ──────────────────────────────
+    String finalExample = '';
+    if (entry.example.isNotEmpty) {
+      try {
+        final transRes = await _translator.translate(
+          selected: entry.example,
+          context: '',
+          target: 'vi',
+        );
+        finalExample = '${entry.example}\n(${transRes.translatedText})';
+      } catch (e) {
+        finalExample = entry.example; // Fallback to raw example if translation fails
+      }
+    } else {
+      // Use part of speech as small hint if no example found
+      finalExample = entry.partOfSpeech.isNotEmpty ? '(${entry.partOfSpeech})' : '';
+    }
+
+    // ── Step 3: Build card payload ────────────────────────────────────────
     final cardData = <String, dynamic>{
       'english': entry.word.trim(),
       'meaning': entry.definition.trim().isEmpty
           ? '(no definition)'
           : entry.definition.trim(),
-      'example': entry.partOfSpeech.isNotEmpty
-          ? '(${entry.partOfSpeech})'  // store part-of-speech as fallback example
-          : '',
-      // Extra metadata visible in the card flip UI
+      'example': finalExample.trim(),
       'phonetic': entry.phonetic,
       'audioUrl': entry.audioUrl,
       'isReviewed': false,
@@ -74,7 +81,7 @@ class FirestoreService {
       'reviewedAt': null,
     };
 
-    // ── Step 3 & 4: Atomic write – card + deck counter ──────────────────
+    // ── Step 4: Atomic write ─────────────────────────────────────────────
     final cardRef = _cardCol(uid, deckId).doc();
     final deckRef = _deckDoc(uid, deckId);
 

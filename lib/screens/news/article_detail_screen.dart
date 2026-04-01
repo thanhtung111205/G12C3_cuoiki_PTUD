@@ -24,11 +24,23 @@ class ArticleDetailScreen extends StatefulWidget {
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   // ── Local state ───────────────────────────────────────────────────────────
   late bool _isBookmarked;
+  late final TranslationViewModel _translationViewModel;
 
   @override
   void initState() {
     super.initState();
     _isBookmarked = globalBookmarks.containsKey(widget.article.articleId);
+    _translationViewModel = TranslationViewModel(
+      service: TranslationService(
+        endpoint: 'https://api.mymemory.translated.net/get',
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _translationViewModel.dispose();
+    super.dispose();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -39,20 +51,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   String _formatDate(DateTime dt) {
     final List<String> months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
     ];
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}'
+    return '${dt.day} ${months[dt.month - 1]}, ${dt.year}'
         '  ·  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
@@ -132,14 +134,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   }
                 }
               });
-              print(
-                _isBookmarked
-                    ? 'Bookmark: ${widget.article.articleId}'
-                    : 'Remove bookmark: ${widget.article.articleId}',
-              );
             },
           ),
-          // Open in browser (placeholder)
+          // Open in browser
           IconButton(
             icon: Icon(
               Icons.open_in_browser_rounded,
@@ -173,9 +170,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   _SourceTag(source: widget.article.source, isDark: isDark),
                   const SizedBox(height: 14),
 
-                  // Title
-                  Text(
-                    widget.article.title,
+                  // Title - Now Selectable and Translateable
+                  ContextTranslationWidget(
+                    text: widget.article.title,
+                    viewModel: _translationViewModel,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -211,8 +209,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Divider(
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.black.withValues(alpha: 0.08),
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.08),
                       thickness: 1,
                     ),
                   ),
@@ -222,14 +220,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Article body with context-aware translation on selection ──
+                  // ── Article body ──
                   ContextTranslationWidget(
                     text: _bodyText,
-                    viewModel: TranslationViewModel(
-                      service: TranslationService(
-                        endpoint: 'https://api.mymemory.translated.net/get',
-                      ),
-                    ),
+                    viewModel: _translationViewModel,
                   ),
 
                   const SizedBox(height: 40),
@@ -302,7 +296,7 @@ class _SourceTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: isDark
-            ? AppColors.deepPurple.withValues(alpha: 0.30)
+            ? AppColors.deepPurple.withOpacity(0.30)
             : AppColors.lavender,
         borderRadius: BorderRadius.circular(10),
       ),
@@ -342,13 +336,13 @@ class _HighlightTipBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: isDark
-            ? AppColors.deepPurple.withValues(alpha: 0.18)
-            : AppColors.lavender.withValues(alpha: 0.7),
+            ? AppColors.deepPurple.withOpacity(0.18)
+            : AppColors.lavender.withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? AppColors.periwinkle.withValues(alpha: 0.25)
-              : AppColors.deepPurple.withValues(alpha: 0.15),
+              ? AppColors.periwinkle.withOpacity(0.25)
+              : AppColors.deepPurple.withOpacity(0.15),
         ),
       ),
       child: Row(

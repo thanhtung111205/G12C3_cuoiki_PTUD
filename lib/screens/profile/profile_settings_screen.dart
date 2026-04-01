@@ -225,12 +225,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
-  Future<void> _exportData() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng xuất dữ liệu sẽ sớm khả dụng.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
@@ -318,52 +312,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             ),
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionCard(
-                      cardColor: cardColor,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          _SectionTitle(
-                            title: 'Lộ trình & dữ liệu',
-                            subtitle:
-                                'Theo dõi tiến độ và xuất dữ liệu cá nhân',
-                            textPrimary: textPrimary,
-                            textSecondary: textSecondary,
-                          ),
-                          const SizedBox(height: 14),
-                          _StatRow(
-                            icon: Icons.route_rounded,
-                            title: 'Lộ trình học',
-                            value: 'Đang hoàn thiện',
-                            textPrimary: textPrimary,
-                            textSecondary: textSecondary,
-                          ),
-                          const SizedBox(height: 12),
-                          _StatRow(
-                            icon: Icons.file_download_rounded,
-                            title: 'Xuất dữ liệu',
-                            value: 'JSON / CSV',
-                            textPrimary: textPrimary,
-                            textSecondary: textSecondary,
-                          ),
-                          const SizedBox(height: 14),
-                          OutlinedButton.icon(
-                            onPressed: _exportData,
-                            icon: const Icon(Icons.download_rounded),
-                            label: const Text('Xuất dữ liệu'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.deepPurple,
-                              side: const BorderSide(color: AppColors.lavender),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -646,7 +594,7 @@ class _ProfileHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Quản lý tài khoản, xem lộ trình và xuất dữ liệu.',
+                  'Quản lý tài khoản và tuỳ chỉnh thông tin cá nhân.',
                   style: TextStyle(
                     fontSize: 12,
                     color: textSecondary,

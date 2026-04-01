@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ).push(MaterialPageRoute<void>(builder: (_) => destination));
         break;
       case 'FlashcardScreen':
-        setState(() => _currentTabIndex = 5);
+        setState(() => _currentTabIndex = 4);
         break;
       case 'SocialScreen':
         setState(() => _currentTabIndex = 3);
@@ -145,11 +145,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   const NewsTabsScreen(),
                   const DocumentListScreen(),
                   const InboxScreen(),
+                  const FlashcardDeckScreen(),
                   ProfileSettingsScreen(
                     isDarkMode: widget.isDarkMode,
                     onToggleTheme: widget.onToggleTheme,
                   ),
-                  const FlashcardDeckScreen(),
                 ],
               ),
               bottomNavigationBar: _HomeBottomNav(
@@ -335,16 +335,16 @@ class _HomeBottomNav extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.person_rounded),
+                child: Icon(Icons.style_rounded),
               ),
-              label: 'Cá nhân',
+              label: 'Flashcard',
             ),
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.style_rounded),
+                child: Icon(Icons.person_rounded),
               ),
-              label: 'Flashcard',
+              label: 'Cá nhân',
             ),
           ],
         ),
