@@ -8,9 +8,11 @@ class ShakeDetector {
   final Duration debounceDuration;
   final Duration shakeWindow; // window to count peaks
   final int shakeCount; // how many peaks within window to consider a shake
+  final bool Function()? isLocked;
 
   StreamSubscription<AccelerometerEvent>? _sub;
   final StreamController<void> _onShakeController = StreamController.broadcast();
+  final StreamController<void> _onIgnoredShakeController = StreamController.broadcast();
 
   DateTime? _lastShakeAt;
   final List<DateTime> _peakTimestamps = [];
@@ -20,9 +22,11 @@ class ShakeDetector {
     this.debounceDuration = const Duration(milliseconds: 800),
     this.shakeWindow = const Duration(milliseconds: 700),
     this.shakeCount = 2,
+    this.isLocked,
   });
 
   Stream<void> get onShake => _onShakeController.stream;
+  Stream<void> get onIgnoredShake => _onIgnoredShakeController.stream;
 
   void startListening() {
     stopListening();
@@ -49,9 +53,13 @@ class ShakeDetector {
       // if we have enough peaks and debounce passed, trigger
       if (_peakTimestamps.length >= shakeCount) {
         if (_lastShakeAt == null || now.difference(_lastShakeAt!) > debounceDuration) {
-          _lastShakeAt = now;
-          // Emit event
-          _onShakeController.add(null);
+          if (isLocked?.call() == true) {
+            _onIgnoredShakeController.add(null);
+          } else {
+            _lastShakeAt = now;
+            // Emit event
+            _onShakeController.add(null);
+          }
           // clear peaks to avoid immediate repeat
           _peakTimestamps.clear();
         }
@@ -67,5 +75,6 @@ class ShakeDetector {
   void dispose() {
     stopListening();
     _onShakeController.close();
+    _onIgnoredShakeController.close();
   }
 }

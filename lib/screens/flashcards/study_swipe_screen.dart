@@ -21,6 +21,8 @@ class FlashcardStudyScreen extends StatefulWidget {
 
 class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     with SingleTickerProviderStateMixin {
+  static const Duration _shakeLockDuration = Duration(milliseconds: 1500);
+
   final FlashcardProvider _provider = FlashcardProvider.instance;
   final CardSwiperController _swiperController = CardSwiperController();
   int _swiperSession = 0;
@@ -29,7 +31,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
   int _frontIndex = 0;
   // Gamification: shake counter
   int _shakeCount = 0;
-  late final ShakeDetector _shakeDetector = ShakeDetector();
+  DateTime _shakeLockUntil = DateTime.fromMillisecondsSinceEpoch(0);
+  late final ShakeDetector _shakeDetector = ShakeDetector(
+    isLocked: () => _isShakeLocked,
+  );
   late final AnimationController _shakeAnimController;
   late final Animation<double> _shakeScale;
 
@@ -43,6 +48,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     _provider.setActiveDeck(_deckId);
     // Start listening to shake events
     _shakeDetector.onShake.listen((_) => _onShakeDetected());
+    _shakeDetector.onIgnoredShake.listen((_) => FlashcardHaptics.cooldownThud());
     _shakeDetector.startListening();
 
     // Animation used to give visual feedback when shake occurs (brief scale pulse)
@@ -62,9 +68,18 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     super.dispose();
   }
 
+  bool get _isShakeLocked => DateTime.now().isBefore(_shakeLockUntil);
+
   void _onShakeDetected() {
     final FlashcardDeck deck = _deck;
     if (deck.cards.isEmpty) return;
+
+    if (_isShakeLocked) {
+      FlashcardHaptics.cooldownThud();
+      return;
+    }
+
+    _shakeLockUntil = DateTime.now().add(_shakeLockDuration);
 
     // increase gamification counter
     setState(() {
@@ -72,7 +87,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       _frontIndex = 0; // reset to first card after shuffle
     });
 
-    FlashcardHaptics.shuffle();
+    FlashcardHaptics.confirmShuffle();
 
     // run a short visual pulse animation
     _shakeAnimController
@@ -352,174 +367,191 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
             .where((FlashcardCard card) => card.rememberedLastTime == false)
             .length;
 
-        return Scaffold(
-          backgroundColor: AppColors.pastelPink,
-          appBar: AppBar(
-            backgroundColor: AppColors.pastelPink,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            title: Text(
-              deck.title,
-              style: const TextStyle(
-                color: AppColors.deepPurple,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            iconTheme: const IconThemeData(color: AppColors.deepPurple),
-            actions: <Widget>[
-              // Debug shuffle button (useful to test haptic & animation without physically shaking)
-              IconButton(
-                onPressed: _onShakeDetected,
-                icon: const Icon(Icons.shuffle_rounded),
-                tooltip: 'Xáo trộn (thử)',
-              ),
-              IconButton(
-                onPressed: () => _openCardEditor(),
-                icon: const Icon(Icons.add_rounded),
-                tooltip: 'Thêm flashcard',
-              ),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(42),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Column(
-                  children: <Widget>[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        minHeight: 9,
-                        value: progress,
-                        backgroundColor: Colors.white.withValues(alpha: 0.65),
-                        color: AppColors.periwinkle,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double cardAreaHeight =
+                compactHeight ? constraints.maxHeight * 0.54 : constraints.maxHeight * 0.62;
+
+            return Scaffold(
+              backgroundColor: AppColors.pastelPink,
+              appBar: AppBar(
+                backgroundColor: AppColors.pastelPink,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                title: Text(
+                  deck.title,
+                  style: const TextStyle(
+                    color: AppColors.deepPurple,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                iconTheme: const IconThemeData(color: AppColors.deepPurple),
+                actions: <Widget>[
+                  // Debug shuffle button (useful to test haptic & animation without physically shaking)
+                  IconButton(
+                    onPressed: _onShakeDetected,
+                    icon: const Icon(Icons.shuffle_rounded),
+                    tooltip: 'Xáo trộn (thử)',
+                  ),
+                  IconButton(
+                    onPressed: () => _openCardEditor(),
+                    icon: const Icon(Icons.add_rounded),
+                    tooltip: 'Thêm flashcard',
+                  ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(42),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Column(
                       children: <Widget>[
-                        Text(
-                          'Đã ôn $reviewedCards/$totalCards',
-                          style: const TextStyle(
-                            color: AppColors.lightTextSecondary,
-                            fontWeight: FontWeight.w600,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 9,
+                            value: progress,
+                            backgroundColor: Colors.white.withValues(alpha: 0.65),
+                            color: AppColors.periwinkle,
                           ),
                         ),
-                        Text(
-                          totalCards == 0
-                              ? '0%'
-                              : '${(progress * 100).round()}%',
-                          style: const TextStyle(
-                            color: AppColors.deepPurple,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              'Đã ôn $reviewedCards/$totalCards',
+                              style: const TextStyle(
+                                color: AppColors.lightTextSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              totalCards == 0
+                                  ? '0%'
+                                  : '${(progress * 100).round()}%',
+                              style: const TextStyle(
+                                color: AppColors.deepPurple,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          body: SafeArea(
-            top: false,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: <Color>[AppColors.pastelPink, AppColors.lavender],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: totalCards == 0
-                  ? _EmptyStudyState(onAdd: () => _openCardEditor())
-                  : isCompleted
-                  ? _CompletedStudyState(
-                      reviewed: reviewedCards,
-                      total: totalCards,
-                      remembered: rememberedCards,
-                      forgotten: forgottenCards,
-                      onRestart: () => _confirmRestartDeck(deck),
-                      onAdd: () => _openCardEditor(),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                      child: Column(
-                        children: <Widget>[
-                          _StudyHeader(
-                            reviewed: reviewedCards,
-                            total: totalCards,
-                            rememberedCount: deck.cards
-                                .where(
-                                  (FlashcardCard card) =>
-                                      card.rememberedLastTime == true,
-                                )
-                                .length,
-                          ),
-                          SizedBox(height: compactHeight ? 10 : 16),
-                          Expanded(
-                            child: Center(
-                              child: AspectRatio(
-                                aspectRatio: compactHeight ? 0.66 : 0.78,
-                                child: ScaleTransition(
-                                  scale: _shakeScale,
-                                  child: CardSwiper(
-                                    key: ValueKey(_swiperSession),
-                                    controller: _swiperController,
-                                    cardsCount: deck.cards.length,
-                                    numberOfCardsDisplayed:
-                                        deck.cards.length < 2
-                                        ? deck.cards.length
-                                        : 2,
-                                    isLoop: false,
-                                    duration: const Duration(milliseconds: 340),
-                                    threshold: 55,
-                                    scale: 0.95,
-                                    padding: EdgeInsets.zero,
-                                    onSwipe: _onSwipe,
-                                    onEnd: () {
-                                      HapticFeedback.mediumImpact();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Bạn đã đi đến thẻ cuối cùng.',
+              body: SafeArea(
+                top: false,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[AppColors.pastelPink, AppColors.lavender],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: totalCards == 0
+                      ? _EmptyStudyState(onAdd: () => _openCardEditor())
+                      : isCompleted
+                      ? _CompletedStudyState(
+                          reviewed: reviewedCards,
+                          total: totalCards,
+                          remembered: rememberedCards,
+                          forgotten: forgottenCards,
+                          onRestart: () => _confirmRestartDeck(deck),
+                          onAdd: () => _openCardEditor(),
+                        )
+                      : SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  _StudyHeader(
+                                    reviewed: reviewedCards,
+                                    total: totalCards,
+                                    rememberedCount: deck.cards
+                                        .where(
+                                          (FlashcardCard card) =>
+                                              card.rememberedLastTime == true,
+                                        )
+                                        .length,
+                                  ),
+                                  SizedBox(height: compactHeight ? 10 : 16),
+                                  SizedBox(
+                                    height: cardAreaHeight,
+                                    child: Center(
+                                      child: AspectRatio(
+                                        aspectRatio: compactHeight ? 0.66 : 0.78,
+                                        child: ScaleTransition(
+                                          scale: _shakeScale,
+                                          child: CardSwiper(
+                                            key: ValueKey(_swiperSession),
+                                            controller: _swiperController,
+                                            cardsCount: deck.cards.length,
+                                            numberOfCardsDisplayed:
+                                                deck.cards.length < 2
+                                                ? deck.cards.length
+                                                : 2,
+                                            isLoop: false,
+                                            duration: const Duration(milliseconds: 340),
+                                            threshold: 55,
+                                            scale: 0.95,
+                                            padding: EdgeInsets.zero,
+                                            onSwipe: _onSwipe,
+                                            onEnd: () {
+                                              HapticFeedback.mediumImpact();
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Bạn đã đi đến thẻ cuối cùng.',
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            cardBuilder:
+                                                (
+                                                  BuildContext context,
+                                                  int index,
+                                                  int horizontalOffsetPercentage,
+                                                  int verticalOffsetPercentage,
+                                                ) {
+                                                  final FlashcardCard card =
+                                                      deck.cards[index];
+                                                  return FlashcardItemCard(card: card);
+                                                },
                                           ),
                                         ),
-                                      );
-                                    },
-                                    cardBuilder:
-                                        (
-                                          BuildContext context,
-                                          int index,
-                                          int horizontalOffsetPercentage,
-                                          int verticalOffsetPercentage,
-                                        ) {
-                                          final FlashcardCard card =
-                                              deck.cards[index];
-                                          return FlashcardItemCard(card: card);
-                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  SizedBox(height: compactHeight ? 10 : 18),
+                                  if (currentCard != null)
+                                    _ActionRow(
+                                      compactHeight: compactHeight,
+                                      onDelete: () =>
+                                          _deleteCurrentCard(deck, currentCard),
+                                      onForget: _swipeLeft,
+                                      onRemember: _swipeRight,
+                                      onEdit: () => _openCardEditor(card: currentCard),
+                                    ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 18),
-                          SizedBox(height: compactHeight ? 10 : 18),
-                          if (currentCard != null)
-                            _ActionRow(
-                              onDelete: () =>
-                                  _deleteCurrentCard(deck, currentCard),
-                              onForget: _swipeLeft,
-                              onRemember: _swipeRight,
-                              onEdit: () => _openCardEditor(card: currentCard),
-                            ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
+                        ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -596,12 +628,14 @@ class _HeaderChip extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
+    required this.compactHeight,
     required this.onDelete,
     required this.onForget,
     required this.onRemember,
     required this.onEdit,
   });
 
+  final bool compactHeight;
   final VoidCallback onDelete;
   final VoidCallback onForget;
   final VoidCallback onRemember;
@@ -613,6 +647,7 @@ class _ActionRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         _MiniActionButton(
+          compactHeight: compactHeight,
           onTap: onDelete,
           icon: Icons.delete_rounded,
           backgroundColor: Colors.white,
@@ -620,6 +655,7 @@ class _ActionRow extends StatelessWidget {
           iconColor: Colors.redAccent,
         ),
         _DecisionButton(
+          compactHeight: compactHeight,
           onTap: onForget,
           icon: Icons.close_rounded,
           borderColor: Colors.deepOrangeAccent,
@@ -627,6 +663,7 @@ class _ActionRow extends StatelessWidget {
           label: 'Quên',
         ),
         _DecisionButton(
+          compactHeight: compactHeight,
           onTap: onRemember,
           icon: Icons.check_rounded,
           borderColor: AppColors.deepPurple,
@@ -634,6 +671,7 @@ class _ActionRow extends StatelessWidget {
           label: 'Nhớ',
         ),
         _MiniActionButton(
+          compactHeight: compactHeight,
           onTap: onEdit,
           icon: Icons.edit_rounded,
           backgroundColor: Colors.white,
@@ -647,6 +685,7 @@ class _ActionRow extends StatelessWidget {
 
 class _MiniActionButton extends StatelessWidget {
   const _MiniActionButton({
+    required this.compactHeight,
     required this.onTap,
     required this.icon,
     required this.backgroundColor,
@@ -654,6 +693,7 @@ class _MiniActionButton extends StatelessWidget {
     required this.iconColor,
   });
 
+  final bool compactHeight;
   final VoidCallback onTap;
   final IconData icon;
   final Color backgroundColor;
@@ -669,8 +709,8 @@ class _MiniActionButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Container(
-          width: 52,
-          height: 52,
+          width: compactHeight ? 44 : 52,
+          height: compactHeight ? 44 : 52,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: borderColor, width: 1.5),
@@ -684,6 +724,7 @@ class _MiniActionButton extends StatelessWidget {
 
 class _DecisionButton extends StatelessWidget {
   const _DecisionButton({
+    required this.compactHeight,
     required this.onTap,
     required this.icon,
     required this.borderColor,
@@ -691,6 +732,7 @@ class _DecisionButton extends StatelessWidget {
     required this.label,
   });
 
+  final bool compactHeight;
   final VoidCallback onTap;
   final IconData icon;
   final Color borderColor;
@@ -709,8 +751,8 @@ class _DecisionButton extends StatelessWidget {
             onTap: onTap,
             customBorder: const CircleBorder(),
             child: Container(
-              width: 70,
-              height: 70,
+              width: compactHeight ? 58 : 70,
+              height: compactHeight ? 58 : 70,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: borderColor, width: 2.2),
@@ -719,15 +761,17 @@ class _DecisionButton extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: borderColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
+        if (!compactHeight) ...<Widget>[
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: borderColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
