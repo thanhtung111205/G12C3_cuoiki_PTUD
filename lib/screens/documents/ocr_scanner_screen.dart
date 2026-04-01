@@ -20,8 +20,15 @@ import 'document_editor_screen.dart';
 /// Màn hình quét tài liệu gồm 2 giai đoạn:
 ///  • Chưa có ảnh  – placeholder camera, nhấn để mở Camera hệ thống.
 ///  • Đã có ảnh    – hiển thị ảnh + OCR text + action toolbar.
+enum OcrEntrySource { home, documents }
+
 class OcrScannerScreen extends StatefulWidget {
-  const OcrScannerScreen({super.key});
+  const OcrScannerScreen({
+    super.key,
+    this.entrySource = OcrEntrySource.documents,
+  });
+
+  final OcrEntrySource entrySource;
 
   @override
   State<OcrScannerScreen> createState() => _OcrScannerScreenState();
@@ -34,7 +41,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   late final TranslationViewModel _translationViewModel;
 
   // ── State ─────────────────────────────────────────────────────────────────
-  String? _imagePath;       // null = belum ada foto
+  String? _imagePath; // null = belum ada foto
   bool _isExtracting = false;
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -47,7 +54,9 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
     super.initState();
     _textController = TextEditingController();
     _translationViewModel = TranslationViewModel(
-      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+      service: TranslationService(
+        endpoint: 'https://api.mymemory.translated.net/get',
+      ),
     );
   }
 
@@ -86,7 +95,9 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
     try {
       final String result = await _ocr.extractText(path);
       if (mounted) {
-        _textController.text = result.isEmpty ? '(Không nhận diện được chữ)' : result;
+        _textController.text = result.isEmpty
+            ? '(Không nhận diện được chữ)'
+            : result;
       }
     } catch (e) {
       debugPrint('[OcrScannerScreen] OCR error: $e');
@@ -123,7 +134,9 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
         SnackBar(
           content: const Text('Không có nội dung bóc tách để lưu.'),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -302,10 +315,7 @@ class _ImagePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
-      child: Image.file(
-        File(imagePath),
-        fit: BoxFit.cover,
-      ),
+      child: Image.file(File(imagePath), fit: BoxFit.cover),
     );
   }
 }
@@ -470,12 +480,7 @@ class _ActionToolbar extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.lavender,
-            width: 1,
-          ),
-        ),
+        border: Border(top: BorderSide(color: AppColors.lavender, width: 1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -516,8 +521,9 @@ class _ActionToolbar extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepPurple,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    AppColors.deepPurple.withValues(alpha: 0.4),
+                disabledBackgroundColor: AppColors.deepPurple.withValues(
+                  alpha: 0.4,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -557,9 +563,7 @@ class _OutlineButton extends StatelessWidget {
         foregroundColor: AppColors.deepPurple,
         side: const BorderSide(color: AppColors.periwinkle, width: 1.5),
         padding: const EdgeInsets.symmetric(vertical: 13),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: loading
           ? const SizedBox(

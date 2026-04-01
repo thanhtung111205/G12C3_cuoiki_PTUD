@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +29,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
 
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? get _userProfileStream {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return null;
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots();
+  }
+
   /// Resolved from FirebaseAuth; falls back to mock name if not signed in.
   String get _userName {
     final user = FirebaseAuth.instance.currentUser;
@@ -38,47 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onBottomTabTap(int index) {
-    if (index == 0) {
-      setState(() => _currentTabIndex = 0);
-      return;
-    }
-
     setState(() => _currentTabIndex = index);
-    final Widget destination = _buildBottomTabDestination(index);
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => destination)).then((_) {
-      if (mounted) setState(() => _currentTabIndex = 0);
-    });
-  }
-
-  Widget _buildBottomTabDestination(int index) {
-    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    switch (index) {
-      case 1:
-        return const DocumentListScreen();
-      case 2:
-        return const NewsTabsScreen();
-      case 3:
-        return const _ComingSoonScreen(
-          title: 'Bạn học',
-          description: 'Tính năng Bạn học đang được phát triển.',
-        );
-      case 4:
-        return currentUserId == null
-            ? const _ComingSoonScreen(
-                title: 'Bản đồ',
-                description: 'Không xác định được người dùng hiện tại.',
-              )
-            : NearbyMapScreen(currentUserId: currentUserId);
-      case 5:
-        return const ProfileSettingsScreen();
-      default:
-        return const _ComingSoonScreen(
-          title: 'Tính năng',
-          description: 'Trang này chưa có, sẽ cập nhật sớm.',
-        );
-    }
   }
 
   void _onArticleTap(Article article) {
@@ -91,44 +61,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onFeatureTap(CoreFeature feature) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final Widget destination;
     switch (feature.targetScreen) {
       case 'NewsScreen':
-        destination = const NewsTabsScreen();
+        setState(() => _currentTabIndex = 1);
         break;
       case 'DocumentsScreen':
-        destination = const DocumentListScreen();
+        setState(() => _currentTabIndex = 2);
         break;
       case 'OcrScanScreen':
         Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const DocumentListScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const OcrScannerScreen(entrySource: OcrEntrySource.home),
+          ),
         );
-        destination = const OcrScannerScreen();
         break;
       case 'StudyMapScreen':
-        destination = currentUserId == null
+        final Widget destination = currentUserId == null
             ? const _ComingSoonScreen(
                 title: 'Bản đồ Bạn học',
                 description: 'Không xác định được người dùng hiện tại.',
               )
             : NearbyMapScreen(currentUserId: currentUserId);
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => destination));
         break;
       case 'FlashcardScreen':
-        destination = const FlashcardDeckScreen();
+        setState(() => _currentTabIndex = 4);
         break;
       case 'SocialScreen':
-        destination = const InboxScreen();
+        setState(() => _currentTabIndex = 3);
         break;
       default:
-        destination = _ComingSoonScreen(
-          title: feature.targetScreen,
-          description: 'Trang này chưa có, sẽ cập nhật sớm.',
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => _ComingSoonScreen(
+              title: feature.targetScreen,
+              description: 'Trang này chưa có, sẽ cập nhật sớm.',
+            ),
+          ),
         );
     }
-
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => destination));
   }
 
   @override
@@ -147,22 +121,66 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
     );
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      extendBodyBehindAppBar: true,
-      body: _HomeBody(
-        isDarkMode: dark,
-        userName: _userName,
-        onToggleTheme: widget.onToggleTheme ?? () {},
-        onArticleTap: _onArticleTap,
-        onFeatureTap: _onFeatureTap,
-      ),
-      bottomNavigationBar: _HomeBottomNav(
-        currentIndex: _currentTabIndex,
-        isDarkMode: dark,
-        onTap: _onBottomTabTap,
-      ),
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _userProfileStream,
+      builder:
+          (
+            BuildContext context,
+            AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot,
+          ) {
+            return Scaffold(
+              backgroundColor: theme.scaffoldBackgroundColor,
+              extendBodyBehindAppBar: true,
+              body: IndexedStack(
+                index: _currentTabIndex,
+                children: [
+                  _HomeBody(
+                    isDarkMode: dark,
+                    userName: _userName,
+                    avatarUrl: _resolveAvatarUrl(snapshot.data?.data()),
+                    onToggleTheme: widget.onToggleTheme ?? () {},
+                    onArticleTap: _onArticleTap,
+                    onFeatureTap: _onFeatureTap,
+                  ),
+                  const NewsTabsScreen(),
+                  const DocumentListScreen(),
+                  const InboxScreen(),
+                  const FlashcardDeckScreen(),
+                  ProfileSettingsScreen(
+                    isDarkMode: widget.isDarkMode,
+                    onToggleTheme: widget.onToggleTheme,
+                  ),
+                ],
+              ),
+              bottomNavigationBar: _HomeBottomNav(
+                currentIndex: _currentTabIndex,
+                isDarkMode: dark,
+                onTap: _onBottomTabTap,
+              ),
+            );
+          },
     );
+  }
+
+  String? _resolveAvatarUrl(Map<String, dynamic>? profileData) {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    String readString(dynamic value) {
+      if (value is String) {
+        final String trimmed = value.trim();
+        if (trimmed.isNotEmpty) return trimmed;
+      }
+      return '';
+    }
+
+    final String profileAvatar = readString(profileData?['avatarUrl']);
+    final String profilePhoto = readString(profileData?['photoUrl']);
+    final String authPhoto = readString(user?.photoURL);
+
+    if (profileAvatar.isNotEmpty) return profileAvatar;
+    if (profilePhoto.isNotEmpty) return profilePhoto;
+    if (authPhoto.isNotEmpty) return authPhoto;
+    return null;
   }
 }
 
@@ -174,6 +192,7 @@ class _HomeBody extends StatelessWidget {
   const _HomeBody({
     required this.isDarkMode,
     required this.userName,
+    required this.avatarUrl,
     required this.onToggleTheme,
     required this.onArticleTap,
     required this.onFeatureTap,
@@ -181,6 +200,7 @@ class _HomeBody extends StatelessWidget {
 
   final bool isDarkMode;
   final String userName;
+  final String? avatarUrl;
   final VoidCallback onToggleTheme;
   final void Function(Article article) onArticleTap;
   final void Function(CoreFeature feature) onFeatureTap;
@@ -194,7 +214,7 @@ class _HomeBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: HomeHeaderSection(
             userName: userName,
-            avatarUrl: HomeMockData.avatarUrl,
+            avatarUrl: avatarUrl,
             isDarkMode: isDarkMode,
             onToggleTheme: onToggleTheme,
           ),
@@ -294,6 +314,13 @@ class _HomeBottomNav extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 2),
+                child: Icon(Icons.newspaper_rounded),
+              ),
+              label: 'Tin tức',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 2),
                 child: Icon(Icons.folder_rounded),
               ),
               label: 'Tài liệu',
@@ -301,23 +328,16 @@ class _HomeBottomNav extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.newspaper_rounded),
+                child: Icon(Icons.message_rounded),
               ),
-              label: 'Đọc Báo',
+              label: 'Tin nhắn',
             ),
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.people_rounded),
+                child: Icon(Icons.style_rounded),
               ),
-              label: 'Bạn học',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 2),
-                child: Icon(Icons.map_rounded),
-              ),
-              label: 'Bản đồ',
+              label: 'Flashcard',
             ),
             BottomNavigationBarItem(
               icon: Padding(

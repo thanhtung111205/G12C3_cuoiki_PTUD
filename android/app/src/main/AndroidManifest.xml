@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
         <uses-permission android:name="android.permission.INTERNET" />
         <!-- Location permissions required by Geolocator / map features -->
         <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
         <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+        <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
         <!-- If you need background location updates, enable the line below and
             request runtime background permission on Android 10+ -->
         <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->

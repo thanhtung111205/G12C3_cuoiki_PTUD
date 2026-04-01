@@ -229,10 +229,14 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                           }
 
                           try {
-                            await provider.addDeck(uid,
+                            final newDeckId = await provider.addDeck(uid,
                                 title: nameCtrl.text.trim());
                             if (dialogCtx.mounted) {
                               Navigator.of(dialogCtx).pop();
+                            }
+                            // Tự động lưu luôn từ vựng vào bộ thẻ vừa tạo 
+                            if (mounted) {
+                              _saveWord(newDeckId);
                             }
                           } catch (_) {
                             setDialogState(() => creating = false);

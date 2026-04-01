@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -86,6 +88,56 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return null;
   }
 
+  _SharedDocumentPayload? _tryParseSharedDocument(String raw) {
+    if (raw.startsWith('DOC_SHARE::')) {
+      try {
+        final String jsonPart = raw.substring('DOC_SHARE::'.length);
+        final Map<String, dynamic> map =
+            jsonDecode(jsonPart) as Map<String, dynamic>;
+        return _SharedDocumentPayload(
+          documentId: map['documentId'] as String? ?? '',
+          title: map['title'] as String? ?? 'Tài liệu được chia sẻ',
+          content: map['content'] as String? ?? '',
+          wordCount: map['wordCount'] as int? ?? 0,
+          sharedBy: map['sharedBy'] as String? ?? '',
+          sharedAt: DateTime.tryParse(map['sharedAt'] as String? ?? ''),
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+
+    if (!raw.startsWith('📄 Tài liệu được chia sẻ')) return null;
+    final List<String> lines = raw.split('\n');
+    final String title = lines
+        .firstWhere(
+          (e) => e.startsWith('Tiêu đề:'),
+          orElse: () => 'Tiêu đề: Tài liệu',
+        )
+        .replaceFirst('Tiêu đề:', '')
+        .trim();
+    final String preview = lines
+        .firstWhere(
+          (e) => e.startsWith('Nội dung tóm tắt:'),
+          orElse: () => 'Nội dung tóm tắt:',
+        )
+        .replaceFirst('Nội dung tóm tắt:', '')
+        .trim();
+    final String wordRaw = lines
+        .firstWhere((e) => e.startsWith('Từ:'), orElse: () => 'Từ: 0')
+        .replaceFirst('Từ:', '')
+        .trim();
+
+    return _SharedDocumentPayload(
+      documentId: '',
+      title: title,
+      content: preview,
+      wordCount: int.tryParse(wordRaw) ?? 0,
+      sharedBy: '',
+      sharedAt: null,
+    );
+  }
+
   void _handleIncomingSignals(List<ChatMessageModel> messages) {
     if (messages.isEmpty) return;
     final ChatMessageModel latest = messages.first;
@@ -99,8 +151,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _lastSeenMessageId = latest.id;
 
     if (latest.senderId != widget.currentUserId) {
+      final _SharedDocumentPayload? sharedDoc = _tryParseSharedDocument(
+        latest.content,
+      );
       NotificationService.instance.playIncomingMessageSound(
         eventKey: '${_roomId ?? 'room'}:${latest.id}',
+        title: 'Tin nhắn mới từ ${widget.partnerName}',
+        body: sharedDoc != null
+            ? 'Đã chia sẻ tài liệu: ${sharedDoc.title}'
+            : latest.content,
       );
       if (_roomId != null) {
         _chatProvider.markRoomAsRead(
@@ -260,6 +319,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                               final ChatMessageModel message = messages[index];
                               final bool isMe =
                                   message.senderId == widget.currentUserId;
+                              final _SharedDocumentPayload? sharedDoc =
+                                  _tryParseSharedDocument(message.content);
 
                               return Align(
                                 alignment: isMe
@@ -271,57 +332,143 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                         MediaQuery.of(context).size.width *
                                         0.76,
                                   ),
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.fromLTRB(
-                                      12,
-                                      10,
-                                      12,
-                                      8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isMe
-                                          ? AppColors.deepPurple
-                                          : AppColors.lavender,
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(16),
-                                        topRight: const Radius.circular(16),
-                                        bottomLeft: Radius.circular(
-                                          isMe ? 16 : 4,
-                                        ),
-                                        bottomRight: Radius.circular(
-                                          isMe ? 4 : 16,
+                                  child: GestureDetector(
+                                    onTap: sharedDoc == null
+                                        ? null
+                                        : () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(
+                                                builder: (_) =>
+                                                    _SharedDocumentPreviewScreen(
+                                                      payload: sharedDoc,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        12,
+                                        10,
+                                        12,
+                                        8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isMe
+                                            ? AppColors.deepPurple
+                                            : AppColors.lavender,
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: const Radius.circular(16),
+                                          topRight: const Radius.circular(16),
+                                          bottomLeft: Radius.circular(
+                                            isMe ? 16 : 4,
+                                          ),
+                                          bottomRight: Radius.circular(
+                                            isMe ? 4 : 16,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: <Widget>[
-                                        Text(
-                                          message.content,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            height: 1.35,
-                                            color: isMe
-                                                ? Colors.white
-                                                : AppColors.lightText,
-                                            fontWeight: isMe
-                                                ? FontWeight.w500
-                                                : FontWeight.w400,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: <Widget>[
+                                          if (sharedDoc != null)
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: <Widget>[
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: <Widget>[
+                                                    Icon(
+                                                      Icons.description_rounded,
+                                                      size: 16,
+                                                      color: isMe
+                                                          ? Colors.white
+                                                          : AppColors
+                                                                .deepPurple,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      'Tài liệu được chia sẻ',
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: isMe
+                                                            ? Colors.white
+                                                            : AppColors
+                                                                  .lightText,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  sharedDoc.title,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isMe
+                                                        ? Colors.white
+                                                        : AppColors.lightText,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Từ: ${sharedDoc.wordCount}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: isMe
+                                                        ? Colors.white70
+                                                        : AppColors
+                                                              .lightTextSecondary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 5),
+                                                Text(
+                                                  'Nhấn để xem tài liệu',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontStyle: FontStyle.italic,
+                                                    color: isMe
+                                                        ? Colors.white70
+                                                        : AppColors
+                                                              .lightTextSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          else
+                                            Text(
+                                              message.content,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                height: 1.35,
+                                                color: isMe
+                                                    ? Colors.white
+                                                    : AppColors.lightText,
+                                                fontWeight: isMe
+                                                    ? FontWeight.w500
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            _formatMessageTime(
+                                              message.timestamp,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isMe
+                                                  ? Colors.white70
+                                                  : AppColors
+                                                        .lightTextSecondary,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          _formatMessageTime(message.timestamp),
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: isMe
-                                                ? Colors.white70
-                                                : AppColors.lightTextSecondary,
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -406,6 +553,84 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SharedDocumentPayload {
+  const _SharedDocumentPayload({
+    required this.documentId,
+    required this.title,
+    required this.content,
+    required this.wordCount,
+    required this.sharedBy,
+    required this.sharedAt,
+  });
+
+  final String documentId;
+  final String title;
+  final String content;
+  final int wordCount;
+  final String sharedBy;
+  final DateTime? sharedAt;
+}
+
+class _SharedDocumentPreviewScreen extends StatelessWidget {
+  const _SharedDocumentPreviewScreen({required this.payload});
+
+  final _SharedDocumentPayload payload;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tài liệu được chia sẻ'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.lightText,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              payload.title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.lightText,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Số từ: ${payload.wordCount}',
+              style: const TextStyle(
+                color: AppColors.lightTextSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F6FD),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                payload.content.trim().isEmpty
+                    ? 'Tài liệu chia sẻ không có nội dung hiển thị.'
+                    : payload.content,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.55,
+                  color: AppColors.lightText,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

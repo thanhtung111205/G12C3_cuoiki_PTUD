@@ -173,14 +173,16 @@ class FlashcardProvider extends ChangeNotifier {
     return _decks[deckId]?.progress ?? 0;
   }
 
-  Future<void> addDeck(String userId, {required String title}) async {
-    await _deckCollection(userId).doc().set(<String, dynamic>{
+  Future<String> addDeck(String userId, {required String title}) async {
+    final docRef = _deckCollection(userId).doc();
+    await docRef.set(<String, dynamic>{
       'title': title.trim(),
       'cardCount': 0,
       'reviewedCount': 0,
       'createdAt': Timestamp.now(),
       'updatedAt': Timestamp.now(),
     });
+    return docRef.id;
   }
 
   Future<void> updateDeck(String userId, String deckId, String title) async {
@@ -329,6 +331,34 @@ class FlashcardProvider extends ChangeNotifier {
         'updatedAt': Timestamp.now(),
       }, SetOptions(merge: true));
     });
+  }
+
+  Future<void> restartDeck(String userId, String deckId) async {
+    final QuerySnapshot<Map<String, dynamic>> cardsSnapshot = await _cardCollection(
+      userId,
+      deckId,
+    ).get();
+
+    if (cardsSnapshot.docs.isNotEmpty) {
+      for (int index = 0; index < cardsSnapshot.docs.length; index += 400) {
+        final WriteBatch batch = _firestore.batch();
+        final int end = math.min(index + 400, cardsSnapshot.docs.length);
+        for (int i = index; i < end; i++) {
+          batch.update(cardsSnapshot.docs[i].reference, <String, dynamic>{
+            'isReviewed': false,
+            'rememberedLastTime': null,
+            'reviewedAt': null,
+            'updatedAt': Timestamp.now(),
+          });
+        }
+        await batch.commit();
+      }
+    }
+
+    await _deckDoc(userId, deckId).set(<String, dynamic>{
+      'reviewedCount': 0,
+      'updatedAt': Timestamp.now(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> markCardReviewed(
@@ -511,8 +541,10 @@ class FlashcardCard {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? reviewedAt;
+
   /// URL to pronunciation audio (MP3). Nullable – may be absent for old cards.
   final String? audioUrl;
+
   /// IPA phonetic transcription e.g. "/həˈloʊ/". Nullable.
   final String? phonetic;
 

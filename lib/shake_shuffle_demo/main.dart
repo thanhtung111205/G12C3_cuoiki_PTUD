@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import 'models/flashcard.dart';
 import 'services/shake_detector.dart';
+import '../utils/flashcard_haptics.dart';
 import 'widgets/flashcard_widget.dart';
 
 void main() {
@@ -90,8 +91,7 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
       _shakeCount++;
     });
 
-    // small feedback
-    HapticFeedback.selectionClick();
+    FlashcardHaptics.shuffle();
 
     // Play sound (optional)
     if (_hasShuffleSound) {

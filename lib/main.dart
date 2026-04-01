@@ -34,31 +34,55 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
+  final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(
+    ThemeMode.light,
+  );
 
   void _toggleTheme() {
-    _themeModeNotifier.value =
-        _themeModeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeModeNotifier.value = _themeModeNotifier.value == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
   }
 
-  ThemeData _buildTheme(Brightness brightness) {
-    final bool isDark = brightness == Brightness.dark;
-    final ColorScheme colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.deepPurple,
-      brightness: brightness,
-    ).copyWith(
-      primary: isDark ? AppColors.periwinkle : AppColors.deepPurple,
-      secondary: isDark ? AppColors.deepPurple : AppColors.periwinkle,
-      tertiary: isDark ? const Color(0xFF2A223D) : AppColors.lavender,
-      surface: isDark ? const Color(0xFF121212) : Colors.white,
-      onSurface: isDark ? const Color(0xFFEDE7FF) : const Color(0xFF231A3D),
-    );
+  ThemeData _buildLightTheme() {
+    final ColorScheme colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.deepPurple,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: AppColors.deepPurple,
+          secondary: AppColors.periwinkle,
+          tertiary: AppColors.lavender,
+          surface: Colors.white,
+          onSurface: const Color(0xFF231A3D),
+        );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: isDark ? const Color(0xFF101014) : Colors.white,
-      appBarTheme: const AppBarTheme(elevation: 0, centerTitle: true),
+      scaffoldBackgroundColor: Colors.white,
+      appBarTheme: const AppBarTheme(elevation: 0),
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    final ColorScheme colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.deepPurple,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: AppColors.periwinkle,
+          secondary: AppColors.deepPurple,
+          tertiary: const Color(0xFF2A223D),
+          surface: const Color(0xFF121212),
+          onSurface: const Color(0xFFEDE7FF),
+        );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: const Color(0xFF101014),
+      appBarTheme: const AppBarTheme(elevation: 0),
     );
   }
 
@@ -76,8 +100,8 @@ class _MyAppState extends State<MyApp> {
         return MaterialApp(
           title: 'Smart Document & Vocab',
           debugShowCheckedModeBanner: false,
-          theme: _buildTheme(Brightness.light),
-          darkTheme: _buildTheme(Brightness.dark),
+          theme: _buildLightTheme(),
+          darkTheme: _buildDarkTheme(),
           themeMode: themeMode,
           // App home — use auth state to pick Home or Auth screen.
           home: StreamBuilder<User?>(
