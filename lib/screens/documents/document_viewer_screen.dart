@@ -9,6 +9,7 @@ import '../../models/document_model.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/document_provider.dart';
 import 'document_editor_screen.dart';
+import 'document_detail_read_screen.dart';
 
 class DocumentViewerScreen extends StatefulWidget {
   const DocumentViewerScreen({super.key, required this.document});
@@ -42,6 +43,14 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
           // After edit, pop back to list to refresh
           Navigator.pop(context);
         });
+  }
+
+  void _onReadMode() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DocumentDetailReadScreen(document: widget.document),
+      ),
+    );
   }
 
   void _onDelete() {
@@ -258,6 +267,11 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_stories),
+            onPressed: _onReadMode,
+            tooltip: 'Chế độ đọc',
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _onEdit,

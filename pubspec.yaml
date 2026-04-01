@@ -54,6 +54,7 @@ dependencies:
   flutter_local_notifications: ^17.2.4
   google_mlkit_text_recognition: ^0.13.0
   image_picker: ^1.1.2
+  just_audio: ^0.9.36
   # vibration: ^1.7.4  # removed - legacy plugin caused Android build error; using Flutter HapticFeedback instead
 
 dev_dependencies:
