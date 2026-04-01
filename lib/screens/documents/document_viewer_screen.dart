@@ -8,6 +8,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/document_model.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/document_provider.dart';
+import '../../translation/context_translation_widget.dart';
+import '../../translation/translation_service.dart';
+import '../../translation/translation_viewmodel.dart';
 import 'document_editor_screen.dart';
 
 class DocumentViewerScreen extends StatefulWidget {
@@ -24,11 +27,24 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ChatProvider _chatProvider = ChatProvider.instance;
+  late TextEditingController _contentController;
+  late TranslationViewModel _translationViewModel;
 
   @override
   void initState() {
     super.initState();
     _documentProvider = DocumentProvider.instance;
+    _contentController = TextEditingController(text: widget.document.content);
+    _translationViewModel = TranslationViewModel(
+      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _contentController.dispose();
+    _translationViewModel.dispose();
+    super.dispose();
   }
 
   void _onEdit() {
@@ -348,9 +364,13 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                widget.document.content,
+              child: ContextTranslationWidget(
+                controller: _contentController,
+                viewModel: _translationViewModel,
+                readOnly: true,
                 style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                maxLines: null,
+                expands: false,
               ),
             ),
             const SizedBox(height: 32),
