@@ -343,6 +343,15 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     return AnimatedBuilder(
       animation: _provider,
       builder: (BuildContext context, Widget? child) {
+        final ThemeData theme = Theme.of(context);
+        final bool isDark = theme.brightness == Brightness.dark;
+        final Color pageBackground =
+            isDark ? AppColors.darkBackground : AppColors.pastelPink;
+        final Color pageSurface = isDark ? AppColors.darkSurface : Colors.white;
+        final Color pageForeground =
+            isDark ? AppColors.darkText : AppColors.deepPurple;
+        final Color pageSecondary =
+            isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
         final FlashcardDeck deck =
             _provider.deckById(_deckId) ?? _provider.activeDeck;
         final FlashcardCard? currentCard = _currentCard(deck);
@@ -370,19 +379,17 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                   compactHeight ? constraints.maxHeight * 0.54 : constraints.maxHeight * 0.62;
 
               return Scaffold(
-                backgroundColor: AppColors.pastelPink,
+                backgroundColor: pageBackground,
                 appBar: AppBar(
-                  backgroundColor: AppColors.pastelPink,
+                  backgroundColor: pageBackground,
+                  foregroundColor: pageForeground,
                   elevation: 0,
                   scrolledUnderElevation: 0,
                   title: Text(
                     deck.title,
-                    style: const TextStyle(
-                      color: AppColors.deepPurple,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  iconTheme: const IconThemeData(color: AppColors.deepPurple),
+                  iconTheme: IconThemeData(color: pageForeground),
                   actions: <Widget>[
                     // Khôi phục nút Restart (Reset)
                     IconButton(
@@ -412,8 +419,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                             child: LinearProgressIndicator(
                               minHeight: 9,
                               value: progress,
-                              backgroundColor: Colors.white.withValues(alpha: 0.65),
-                              color: AppColors.periwinkle,
+                              backgroundColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : Colors.white.withValues(alpha: 0.65),
+                              color: theme.colorScheme.primary,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -422,8 +431,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                             children: <Widget>[
                               Text(
                                 'Đã ôn $reviewedCards/$totalCards',
-                                style: const TextStyle(
-                                  color: AppColors.lightTextSecondary,
+                                style: TextStyle(
+                                  color: pageSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -431,8 +440,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                 totalCards == 0
                                     ? '0%'
                                     : '${(progress * 100).round()}%',
-                                style: const TextStyle(
-                                  color: AppColors.deepPurple,
+                                style: TextStyle(
+                                  color: pageForeground,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -446,9 +455,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                 body: SafeArea(
                   top: false,
                   child: Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: <Color>[AppColors.pastelPink, AppColors.lavender],
+                        colors: <Color>[pageBackground, pageSurface],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -565,12 +574,17 @@ class _StudyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
     return Row(
       children: <Widget>[
         _HeaderChip(
           icon: Icons.local_fire_department_rounded,
           label: '$reviewed/$total',
-          color: AppColors.deepPurple,
+          color: theme.colorScheme.primary,
         ),
         const SizedBox(width: 10),
         _HeaderChip(
@@ -579,7 +593,7 @@ class _StudyHeader extends StatelessWidget {
           color: Colors.green,
         ),
         const Spacer(),
-        const Icon(Icons.swipe_rounded, color: AppColors.periwinkle),
+        Icon(Icons.swipe_rounded, color: secondaryText),
       ],
     );
   }
@@ -598,12 +612,14 @@ class _HeaderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.76),
+        color: isDark ? AppColors.darkCard : Colors.white.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.lavender),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -696,8 +712,10 @@ class _MiniActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
     return Material(
-      color: backgroundColor,
+      color: isDark ? AppColors.darkCard : backgroundColor,
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -735,11 +753,13 @@ class _DecisionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Material(
-          color: Colors.white,
+          color: isDark ? AppColors.darkCard : Colors.white,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onTap,
@@ -778,6 +798,12 @@ class _EmptyStudyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color surface = isDark ? AppColors.darkCard : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -788,11 +814,11 @@ class _EmptyStudyState extends StatelessWidget {
               width: 92,
               height: 92,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surface,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: AppColors.deepPurple.withValues(alpha: 0.10),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.10),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -805,23 +831,20 @@ class _EmptyStudyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Chưa có flashcard nào trong bộ này',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.deepPurple,
+                color: primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Bấm dấu cộng để thêm thẻ thủ công và bắt đầu ôn tập.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.lightTextSecondary,
-                height: 1.45,
-              ),
+              style: TextStyle(color: secondaryText, height: 1.45),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
@@ -863,6 +886,12 @@ class _CompletedStudyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color surface = isDark ? AppColors.darkCard : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -873,11 +902,11 @@ class _CompletedStudyState extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surface,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: AppColors.deepPurple.withValues(alpha: 0.10),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.10),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -890,11 +919,11 @@ class _CompletedStudyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Bạn đã học hết bộ flashcard này',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.deepPurple,
+                color: primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -903,10 +932,7 @@ class _CompletedStudyState extends StatelessWidget {
             Text(
               'Đã hoàn thành $reviewed/$total thẻ. Bấm restart để học lại từ đầu.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.lightTextSecondary,
-                height: 1.45,
-              ),
+              style: TextStyle(color: secondaryText, height: 1.45),
             ),
             const SizedBox(height: 16),
             Wrap(

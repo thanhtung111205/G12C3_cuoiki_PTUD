@@ -201,6 +201,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBackground =
+        isDark ? AppColors.darkBackground : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color inputFill = isDark ? AppColors.darkCard : const Color(0xFFF5F3FB);
+
     if (_isRoomLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -217,10 +226,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.lightText,
+        backgroundColor: pageBackground,
+        foregroundColor: primaryText,
         elevation: 0,
         titleSpacing: 0,
         title: Row(
@@ -246,16 +255,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     widget.partnerName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
+                      color: primaryText,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Đang hoạt động',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.lightTextSecondary,
+                      color: secondaryText,
                     ),
                   ),
                 ],
@@ -285,9 +295,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           child: Text(
                             'Không thể tải tin nhắn: ${snapshot.error}',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppColors.lightTextSecondary,
-                            ),
+                            style: TextStyle(color: secondaryText),
                           ),
                         ),
                       );
@@ -356,7 +364,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                       decoration: BoxDecoration(
                                         color: isMe
                                             ? AppColors.deepPurple
-                                            : AppColors.lavender,
+                                            : (isDark
+                                                ? AppColors.darkCard
+                                                : AppColors.lavender),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(16),
                                           topRight: const Radius.circular(16),
@@ -386,8 +396,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                       size: 16,
                                                       color: isMe
                                                           ? Colors.white
-                                                          : AppColors
-                                                                .deepPurple,
+                                                        : (isDark
+                                                          ? AppColors.periwinkle
+                                                          : AppColors.deepPurple),
                                                     ),
                                                     const SizedBox(width: 6),
                                                     Text(
@@ -398,8 +409,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                             FontWeight.w700,
                                                         color: isMe
                                                             ? Colors.white
-                                                            : AppColors
-                                                                  .lightText,
+                                                          : (isDark
+                                                            ? AppColors.darkText
+                                                            : AppColors.lightText),
                                                       ),
                                                     ),
                                                   ],
@@ -412,7 +424,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                     fontWeight: FontWeight.w700,
                                                     color: isMe
                                                         ? Colors.white
-                                                        : AppColors.lightText,
+                                                      : (isDark
+                                                        ? AppColors.darkText
+                                                        : AppColors.lightText),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),
@@ -422,8 +436,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                     fontSize: 12,
                                                     color: isMe
                                                         ? Colors.white70
-                                                        : AppColors
-                                                              .lightTextSecondary,
+                                                      : (isDark
+                                                        ? AppColors.darkTextSecondary
+                                                        : AppColors.lightTextSecondary),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 5),
@@ -434,8 +449,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                     fontStyle: FontStyle.italic,
                                                     color: isMe
                                                         ? Colors.white70
-                                                        : AppColors
-                                                              .lightTextSecondary,
+                                                      : (isDark
+                                                        ? AppColors.darkTextSecondary
+                                                        : AppColors.lightTextSecondary),
                                                   ),
                                                 ),
                                               ],
@@ -448,7 +464,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                 height: 1.35,
                                                 color: isMe
                                                     ? Colors.white
-                                                    : AppColors.lightText,
+                                                  : (isDark
+                                                    ? AppColors.darkText
+                                                    : AppColors.lightText),
                                                 fontWeight: isMe
                                                     ? FontWeight.w500
                                                     : FontWeight.w400,
@@ -463,8 +481,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                               fontSize: 10,
                                               color: isMe
                                                   ? Colors.white70
-                                                  : AppColors
-                                                        .lightTextSecondary,
+                                                  : (isDark
+                                                    ? AppColors.darkTextSecondary
+                                                    : AppColors.lightTextSecondary),
                                             ),
                                           ),
                                         ],
@@ -511,7 +530,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       decoration: InputDecoration(
                         hintText: 'Nhập tin nhắn...',
                         filled: true,
-                        fillColor: const Color(0xFFF5F3FB),
+                        fillColor: inputFill,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 12,
@@ -583,12 +602,21 @@ class _SharedDocumentPreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBackground =
+        isDark ? AppColors.darkBackground : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tài liệu được chia sẻ'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.lightText,
+        backgroundColor: pageBackground,
+        foregroundColor: primaryText,
       ),
+      backgroundColor: pageBackground,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -596,36 +624,33 @@ class _SharedDocumentPreviewScreen extends StatelessWidget {
           children: <Widget>[
             Text(
               payload.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.lightText,
+                color: primaryText,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Số từ: ${payload.wordCount}',
-              style: const TextStyle(
-                color: AppColors.lightTextSecondary,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: secondaryText, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F6FD),
+                color: isDark ? AppColors.darkCard : const Color(0xFFF8F6FD),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 payload.content.trim().isEmpty
                     ? 'Tài liệu chia sẻ không có nội dung hiển thị.'
                     : payload.content,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 1.55,
-                  color: AppColors.lightText,
+                  color: primaryText,
                 ),
               ),
             ),

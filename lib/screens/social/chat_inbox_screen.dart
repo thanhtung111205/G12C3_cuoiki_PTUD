@@ -108,6 +108,15 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBackground =
+        isDark ? AppColors.darkBackground : const Color(0xFFFCFBFF);
+    final Color surface = isDark ? AppColors.darkSurface : Colors.white;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color searchFill = isDark ? AppColors.darkCard : const Color(0xFFF4F2FA);
 
     if (currentUserId == null) {
       return const Scaffold(
@@ -121,11 +130,11 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFBFF),
+      backgroundColor: pageBackground,
       appBar: AppBar(
         title: const Text('Tin nhắn'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.lightText,
+        backgroundColor: pageBackground,
+        foregroundColor: primaryText,
         elevation: 0,
       ),
       body: SafeArea(
@@ -144,7 +153,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   hintText: 'Tìm kiếm bạn học...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   filled: true,
-                  fillColor: const Color(0xFFF4F2FA),
+                    fillColor: searchFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -172,9 +181,7 @@ class _InboxScreenState extends State<InboxScreen> {
                             child: Text(
                               'Không thể tải hộp thư: ${snapshot.error}',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppColors.lightTextSecondary,
-                              ),
+                              style: TextStyle(color: secondaryText),
                             ),
                           ),
                         );
@@ -212,7 +219,7 @@ class _InboxScreenState extends State<InboxScreen> {
                           final bool unread = item.unreadCount > 0;
 
                           return Material(
-                            color: Colors.white,
+                            color: surface,
                             borderRadius: BorderRadius.circular(18),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(18),
@@ -240,7 +247,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                   children: <Widget>[
                                     CircleAvatar(
                                       radius: 25,
-                                      backgroundColor: AppColors.lavender,
+                                      backgroundColor: isDark ? AppColors.darkCard : AppColors.lavender,
                                       backgroundImage:
                                           item.partnerAvatarUrl
                                                   ?.trim()
@@ -269,10 +276,10 @@ class _InboxScreenState extends State<InboxScreen> {
                                             item.partnerName,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.lightText,
+                                              color: primaryText,
                                             ),
                                           ),
                                           const SizedBox(height: 5),
@@ -282,10 +289,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: unread
-                                                  ? AppColors.lightText
-                                                  : AppColors
-                                                        .lightTextSecondary,
+                                              color: unread ? primaryText : secondaryText,
                                               fontWeight: unread
                                                   ? FontWeight.w700
                                                   : FontWeight.w400,
@@ -364,6 +368,11 @@ class _InboxEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
+    final Color secondaryText =
+        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -379,19 +388,19 @@ class _InboxEmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.lightText,
+                color: primaryText,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.lightTextSecondary,
+                color: secondaryText,
                 height: 1.4,
               ),
             ),
