@@ -48,7 +48,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     _provider.setActiveDeck(_deckId);
     // Start listening to shake events
     _shakeDetector.onShake.listen((_) => _onShakeDetected());
-    _shakeDetector.onIgnoredShake.listen((_) => FlashcardHaptics.cooldownThud());
+    _shakeDetector.onIgnoredShake.listen(
+      (_) => FlashcardHaptics.cooldownThud(),
+    );
     _shakeDetector.startListening();
 
     // Animation used to give visual feedback when shake occurs (brief scale pulse)
@@ -110,7 +112,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.white.withOpacity(0.12), width: 1), // Viền mờ nhẹ
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.12),
+            width: 1,
+          ), // Viền mờ nhẹ
         ),
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         content: Row(
@@ -120,7 +125,11 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
             const Expanded(
               child: Text(
                 'Đã xáo trộn thẻ',
-                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             Container(
@@ -149,10 +158,15 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                 minimumSize: const Size(0, 36),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(color: Colors.white.withOpacity(0.2)), // Viền mờ nhẹ cho nút
+                  side: BorderSide(
+                    color: Colors.white.withOpacity(0.2),
+                  ), // Viền mờ nhẹ cho nút
                 ),
               ),
-              child: const Text('Hoàn tác', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Hoàn tác',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -345,13 +359,16 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       builder: (BuildContext context, Widget? child) {
         final ThemeData theme = Theme.of(context);
         final bool isDark = theme.brightness == Brightness.dark;
-        final Color pageBackground =
-            isDark ? AppColors.darkBackground : AppColors.pastelPink;
+        final Color pageBackground = isDark
+            ? AppColors.darkBackground
+            : AppColors.pastelPink;
         final Color pageSurface = isDark ? AppColors.darkSurface : Colors.white;
-        final Color pageForeground =
-            isDark ? AppColors.darkText : AppColors.deepPurple;
-        final Color pageSecondary =
-            isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        final Color pageForeground = isDark
+            ? AppColors.darkText
+            : AppColors.deepPurple;
+        final Color pageSecondary = isDark
+            ? AppColors.darkTextSecondary
+            : AppColors.lightTextSecondary;
         final FlashcardDeck deck =
             _provider.deckById(_deckId) ?? _provider.activeDeck;
         final FlashcardCard? currentCard = _currentCard(deck);
@@ -375,8 +392,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
           behavior: HitTestBehavior.translucent,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final double cardAreaHeight =
-                  compactHeight ? constraints.maxHeight * 0.54 : constraints.maxHeight * 0.62;
+              final double cardAreaHeight = compactHeight
+                  ? constraints.maxHeight * 0.54
+                  : constraints.maxHeight * 0.62;
 
               return Scaffold(
                 backgroundColor: pageBackground,
@@ -480,7 +498,12 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                 minHeight: constraints.maxHeight,
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  18,
+                                  16,
+                                  18,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: <Widget>[
@@ -499,7 +522,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                       height: cardAreaHeight,
                                       child: Center(
                                         child: AspectRatio(
-                                          aspectRatio: compactHeight ? 0.66 : 0.78,
+                                          aspectRatio: compactHeight
+                                              ? 0.66
+                                              : 0.78,
                                           child: ScaleTransition(
                                             scale: _shakeScale,
                                             child: CardSwiper(
@@ -511,7 +536,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                                   ? deck.cards.length
                                                   : 2,
                                               isLoop: false,
-                                              duration: const Duration(milliseconds: 340),
+                                              duration: const Duration(
+                                                milliseconds: 340,
+                                              ),
                                               threshold: 55,
                                               scale: 0.95,
                                               padding: EdgeInsets.zero,
@@ -523,12 +550,16 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                                   (
                                                     BuildContext context,
                                                     int index,
-                                                    int horizontalOffsetPercentage,
-                                                    int verticalOffsetPercentage,
+                                                    int
+                                                    horizontalOffsetPercentage,
+                                                    int
+                                                    verticalOffsetPercentage,
                                                   ) {
                                                     final FlashcardCard card =
                                                         deck.cards[index];
-                                                    return FlashcardItemCard(card: card);
+                                                    return FlashcardItemCard(
+                                                      card: card,
+                                                    );
                                                   },
                                             ),
                                           ),
@@ -539,11 +570,14 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
                                     if (currentCard != null)
                                       _ActionRow(
                                         compactHeight: compactHeight,
-                                        onDelete: () =>
-                                            _deleteCurrentCard(deck, currentCard),
+                                        onDelete: () => _deleteCurrentCard(
+                                          deck,
+                                          currentCard,
+                                        ),
                                         onForget: _swipeLeft,
                                         onRemember: _swipeRight,
-                                        onEdit: () => _openCardEditor(card: currentCard),
+                                        onEdit: () =>
+                                            _openCardEditor(card: currentCard),
                                       ),
                                   ],
                                 ),
@@ -576,9 +610,12 @@ class _StudyHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color primaryText = isDark
+        ? AppColors.darkText
+        : AppColors.deepPurple;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
     return Row(
       children: <Widget>[
         _HeaderChip(
@@ -617,9 +654,15 @@ class _HeaderChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white.withValues(alpha: 0.76),
+        color: isDark
+            ? AppColors.darkCard
+            : Colors.white.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppColors.lavender,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -801,9 +844,12 @@ class _EmptyStudyState extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color surface = isDark ? AppColors.darkCard : Colors.white;
-    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color primaryText = isDark
+        ? AppColors.darkText
+        : AppColors.deepPurple;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -889,9 +935,12 @@ class _CompletedStudyState extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color surface = isDark ? AppColors.darkCard : Colors.white;
-    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color primaryText = isDark
+        ? AppColors.darkText
+        : AppColors.deepPurple;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -1076,6 +1125,24 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color sheetBg = isDark ? const Color(0xFF1A1A22) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : AppColors.deepPurple;
+    final Color closeColor = isDark
+        ? Colors.white.withValues(alpha: 0.75)
+        : AppColors.lightTextSecondary;
+    final Color fieldFill = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.lavender.withValues(alpha: 0.45);
+    final Color labelColor = isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : AppColors.lightTextSecondary;
+    final Color inputColor = isDark ? Colors.white : AppColors.lightText;
+    final Color hintColor = isDark
+        ? Colors.white.withValues(alpha: 0.76)
+        : AppColors.periwinkle;
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -1085,11 +1152,17 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
           margin: const EdgeInsets.symmetric(horizontal: 12),
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: sheetBg,
             borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : AppColors.lavender.withValues(alpha: 0.7),
+            ),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: AppColors.deepPurple.withValues(alpha: 0.18),
+                color: (isDark ? Colors.black : AppColors.deepPurple)
+                    .withValues(alpha: isDark ? 0.42 : 0.18),
                 blurRadius: 30,
                 offset: const Offset(0, 14),
               ),
@@ -1104,16 +1177,16 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                   Expanded(
                     child: Text(
                       widget.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.deepPurple,
+                        color: titleColor,
                       ),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: closeColor),
                   ),
                 ],
               ),
@@ -1125,10 +1198,12 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                       controller: _englishController,
                       textInputAction: TextInputAction.next,
                       enabled: !_isSaving,
+                      style: TextStyle(color: inputColor),
                       decoration: InputDecoration(
                         labelText: 'Tiếng Anh',
+                        labelStyle: TextStyle(color: labelColor),
                         filled: true,
-                        fillColor: AppColors.lavender.withValues(alpha: 0.45),
+                        fillColor: fieldFill,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
@@ -1142,10 +1217,12 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                       controller: _meaningController,
                       textInputAction: TextInputAction.done,
                       enabled: !_isSaving,
+                      style: TextStyle(color: inputColor),
                       decoration: InputDecoration(
                         labelText: 'Nghĩa tiếng Việt',
+                        labelStyle: TextStyle(color: labelColor),
                         filled: true,
-                        fillColor: AppColors.lavender.withValues(alpha: 0.45),
+                        fillColor: fieldFill,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
@@ -1190,6 +1267,12 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.deepPurple,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.deepPurple.withValues(
+                      alpha: 0.45,
+                    ),
+                    disabledForegroundColor: Colors.white.withValues(
+                      alpha: 0.78,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: _isSaving

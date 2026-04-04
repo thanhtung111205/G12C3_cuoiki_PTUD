@@ -354,6 +354,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+
     if (_isLoading) {
       return _buildFullScreenState(
         title: 'Đang khởi tạo Bản đồ Bạn học ở gần',
@@ -419,7 +422,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF101014) : Colors.white,
       body: Stack(
         children: <Widget>[
           Positioned.fill(
@@ -492,8 +495,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.deepPurple,
+        backgroundColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
+        foregroundColor: isDark ? AppColors.periwinkle : AppColors.deepPurple,
         onPressed: _bootstrapNearbyMap,
         child: const Icon(Icons.refresh),
       ),
@@ -505,8 +508,21 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     required String message,
     required Widget child,
   }) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBg = isDark
+        ? const Color(0xFF101014)
+        : const Color(0xFFF7F4FF);
+    final Color circleBg = isDark
+        ? const Color(0xFF1D1A2B)
+        : AppColors.lavender;
+    final Color titleColor = isDark ? Colors.white : AppColors.lightText;
+    final Color messageColor = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FF),
+      backgroundColor: pageBg,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -516,8 +532,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               Container(
                 width: 80,
                 height: 80,
-                decoration: const BoxDecoration(
-                  color: AppColors.lavender,
+                decoration: BoxDecoration(
+                  color: circleBg,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -530,19 +546,19 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.lightText,
+                  color: titleColor,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.lightTextSecondary,
+                  color: messageColor,
                   height: 1.4,
                 ),
               ),
@@ -564,14 +580,26 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color chipBg = isDark
+        ? const Color(0xFF1A1A22).withValues(alpha: 0.92)
+        : Colors.white.withValues(alpha: 0.92);
+    final Color border = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : AppColors.lavender.withValues(alpha: 0.7);
+    final Color titleColor = isDark ? Colors.white : AppColors.lightText;
+    final Color subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary;
+
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: chipBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -584,19 +612,16 @@ class _InfoChip extends StatelessWidget {
           children: <Widget>[
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.lightText,
+                color: titleColor,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.lightTextSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: subtitleColor),
             ),
           ],
         ),
@@ -612,19 +637,22 @@ class _BackButtonChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: Colors.white.withValues(alpha: 0.94),
+      color: isDark
+          ? const Color(0xFF1A1A22).withValues(alpha: 0.94)
+          : Colors.white.withValues(alpha: 0.94),
       shape: const CircleBorder(),
       elevation: 0,
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onPressed,
-        child: const SizedBox(
+        child: SizedBox(
           width: 46,
           height: 46,
           child: Icon(
             Icons.arrow_back_rounded,
-            color: AppColors.lightText,
+            color: isDark ? Colors.white : AppColors.lightText,
             size: 22,
           ),
         ),
@@ -646,15 +674,23 @@ class _PrivacySwitchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bg = isDark
+        ? const Color(0xFF1A1A22).withValues(alpha: 0.94)
+        : Colors.white.withValues(alpha: 0.94);
+    final Color border = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : AppColors.lavender.withValues(alpha: 0.8);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
+        color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
             blurRadius: 22,
             offset: const Offset(0, 8),
           ),
@@ -665,17 +701,17 @@ class _PrivacySwitchCard extends StatelessWidget {
         children: <Widget>[
           Text(
             isVisible ? 'Hiện' : 'Ẩn',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.lightText,
+              color: isDark ? Colors.white : AppColors.lightText,
             ),
           ),
           const SizedBox(width: 8),
           Switch(
             value: isVisible,
             onChanged: isSaving ? null : onChanged,
-            activeColor: AppColors.deepPurple,
+            activeThumbColor: AppColors.deepPurple,
             activeTrackColor: AppColors.deepPurple.withValues(alpha: 0.28),
             inactiveThumbColor: Colors.white,
             inactiveTrackColor: Colors.grey,
@@ -693,19 +729,28 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: isDark
+            ? const Color(0xFF1A1A22).withValues(alpha: 0.92)
+            : Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : AppColors.lavender.withValues(alpha: 0.7),
+        ),
       ),
       child: Text(
         message,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: AppColors.lightTextSecondary,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.78)
+              : AppColors.lightTextSecondary,
           height: 1.35,
         ),
       ),
@@ -720,16 +765,23 @@ class _EmptyNearbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
+        color: isDark
+            ? const Color(0xFF1A1A22).withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : AppColors.lavender.withValues(alpha: 0.8),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
             blurRadius: 26,
             offset: const Offset(0, 10),
           ),
@@ -749,9 +801,11 @@ class _EmptyNearbyCard extends StatelessWidget {
                 ? 'Chưa có bạn học nào trong bán kính 2km.'
                 : 'Bạn đang ẩn vị trí, nên sẽ không hiển thị với người khác.',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.lightTextSecondary,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.78)
+                  : AppColors.lightTextSecondary,
               height: 1.4,
             ),
           ),
@@ -773,7 +827,7 @@ class _PeerBottomSheet extends StatelessWidget {
   final VoidCallback onStartChat;
 
   String _distanceLabel() {
-    final double? meters = distanceMeters ?? peer.distanceMeters;
+    final double meters = distanceMeters ?? peer.distanceMeters;
     if (meters == null) return 'Đang tính khoảng cách';
 
     if (meters < 1000) {
@@ -785,11 +839,18 @@ class _PeerBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color panelBg = isDark ? const Color(0xFF1A1A22) : Colors.white;
+    final Color panelTitle = isDark ? Colors.white : AppColors.lightText;
+    final Color panelSubtle = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: panelBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(
         top: false,
@@ -819,19 +880,16 @@ class _PeerBottomSheet extends StatelessWidget {
                     children: <Widget>[
                       Text(
                         peer.displayName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.lightText,
+                          color: panelTitle,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         _distanceLabel(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.lightTextSecondary,
-                        ),
+                        style: TextStyle(fontSize: 13, color: panelSubtle),
                       ),
                       const SizedBox(height: 10),
                       _StatusBadge(label: peer.studyStatus),
@@ -876,14 +934,21 @@ class _PeerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? url = avatarUrl?.trim().isNotEmpty == true ? avatarUrl : null;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: 72,
       height: 72,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.lavender.withValues(alpha: 0.55),
-        border: Border.all(color: AppColors.lavender),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppColors.lavender.withValues(alpha: 0.55),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : AppColors.lavender,
+        ),
       ),
       child: ClipOval(
         child: url == null
@@ -919,18 +984,21 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.lavender.withValues(alpha: 0.55),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppColors.lavender.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: AppColors.lightText,
+          color: isDark ? Colors.white : AppColors.lightText,
         ),
       ),
     );

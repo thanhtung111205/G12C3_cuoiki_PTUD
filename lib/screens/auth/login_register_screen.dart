@@ -154,8 +154,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               textInputAction: TextInputAction.next,
                               validator: (String? value) {
                                 final String text = value?.trim() ?? '';
-                                if (text.isEmpty)
+                                if (text.isEmpty) {
                                   return 'Vui lòng nhập tên tài khoản';
+                                }
                                 return null;
                               },
                             ),

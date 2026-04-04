@@ -15,7 +15,7 @@ void main() {
 }
 
 class ShakeShuffleDemoApp extends StatelessWidget {
-  const ShakeShuffleDemoApp({Key? key}) : super(key: key);
+  const ShakeShuffleDemoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +27,14 @@ class ShakeShuffleDemoApp extends StatelessWidget {
 }
 
 class ShakeShuffleHome extends StatefulWidget {
-  const ShakeShuffleHome({Key? key}) : super(key: key);
+  const ShakeShuffleHome({super.key});
 
   @override
   State<ShakeShuffleHome> createState() => _ShakeShuffleHomeState();
 }
 
-class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerProviderStateMixin {
+class _ShakeShuffleHomeState extends State<ShakeShuffleHome>
+    with SingleTickerProviderStateMixin {
   late List<Flashcard> _cards;
   late ShakeDetector _shakeDetector;
   late AnimationController _listAnimController;
@@ -47,7 +48,11 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
     // Sample cards
     _cards = List.generate(
       8,
-      (i) => Flashcard(id: 'c$i', front: 'Word ${i + 1}', back: 'Definition ${i + 1}'),
+      (i) => Flashcard(
+        id: 'c$i',
+        front: 'Word ${i + 1}',
+        back: 'Definition ${i + 1}',
+      ),
     );
 
     _shakeDetector = ShakeDetector(
@@ -59,7 +64,10 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
     _shakeDetector.onShake.listen((_) => _onShakeDetected());
     _shakeDetector.startListening();
 
-    _listAnimController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _listAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
 
     // preload optional sound (place a short click in assets or rely on system sound)
     _preloadSound();
@@ -95,7 +103,9 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
 
     // Play sound (optional)
     if (_hasShuffleSound) {
-      _audioPlayer.play(AssetSource('assets/sounds/shuffle.wav')).catchError((_) {});
+      _audioPlayer
+          .play(AssetSource('assets/sounds/shuffle.wav'))
+          .catchError((_) {});
     }
 
     // Shuffle with animation and show snackbar
@@ -103,9 +113,9 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
       setState(() {
         _cards.shuffle(Random());
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cards shuffled!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cards shuffled!')));
     });
   }
 
@@ -129,21 +139,27 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
               child: AnimatedBuilder(
                 animation: _listAnimController,
                 builder: (context, child) {
-                  final t = Curves.easeInOut.transform(_listAnimController.value);
+                  final t = Curves.easeInOut.transform(
+                    _listAnimController.value,
+                  );
                   return GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 3 / 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 3 / 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                        ),
                     itemCount: _cards.length,
                     itemBuilder: (context, index) {
                       final card = _cards[index];
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 350),
                         transitionBuilder: (child, animation) {
-                          final rotate = Tween(begin: 0.0, end: pi).animate(animation);
+                          final rotate = Tween(
+                            begin: 0.0,
+                            end: pi,
+                          ).animate(animation);
                           return AnimatedBuilder(
                             animation: rotate,
                             child: child,
@@ -154,7 +170,13 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
                                 transform: Matrix4.identity()
                                   ..setEntry(3, 2, 0.001)
                                   ..rotateY(rotate.value)
-                                  ..multiply(Matrix4.translationValues(isUnder ? -10.0 * tilt : 0.0, 0.0, 0.0)),
+                                  ..multiply(
+                                    Matrix4.translationValues(
+                                      isUnder ? -10.0 * tilt : 0.0,
+                                      0.0,
+                                      0.0,
+                                    ),
+                                  ),
                                 alignment: Alignment.center,
                                 child: Opacity(
                                   opacity: 0.8 + 0.2 * t,
@@ -179,7 +201,7 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome> with SingleTickerPr
               onPressed: () => _onShakeDetected(),
               icon: const Icon(Icons.shuffle),
               label: const Text('Shuffle (manual)'),
-            )
+            ),
           ],
         ),
       ),
