@@ -163,6 +163,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
         ),
         backgroundColor: Colors.redAccent.shade700,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );

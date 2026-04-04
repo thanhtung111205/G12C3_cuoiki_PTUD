@@ -106,6 +106,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi nhận diện chữ: $e'),
+            duration: const Duration(seconds: 2),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -133,6 +134,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Không có nội dung bóc tách để lưu.'),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

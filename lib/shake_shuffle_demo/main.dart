@@ -113,9 +113,12 @@ class _ShakeShuffleHomeState extends State<ShakeShuffleHome>
       setState(() {
         _cards.shuffle(Random());
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cards shuffled!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cards shuffled!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     });
   }
 

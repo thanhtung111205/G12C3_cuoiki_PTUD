@@ -31,14 +31,19 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
     super.initState();
     _documentProvider = DocumentProvider.instance;
 
-    _titleController = TextEditingController(text: widget.document?.title ?? '');
+    _titleController = TextEditingController(
+      text: widget.document?.title ?? '',
+    );
     _contentController = TextEditingController(
-        text: widget.document?.content ?? widget.initialContent ?? '');
+      text: widget.document?.content ?? widget.initialContent ?? '',
+    );
     _tagController = TextEditingController();
     _tags = List<String>.from(widget.document?.tags ?? []);
-    
+
     _translationViewModel = TranslationViewModel(
-      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+      service: TranslationService(
+        endpoint: 'https://api.mymemory.translated.net/get',
+      ),
     );
   }
 
@@ -72,13 +77,14 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
       final ClipboardData? data = await Clipboard.getData('text/plain');
       if (data != null && data.text != null) {
         setState(() {
-          _contentController.text += (_contentController.text.isEmpty ? '' : '\n') + data.text!;
+          _contentController.text +=
+              (_contentController.text.isEmpty ? '' : '\n') + data.text!;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Đã dán nội dung thành công'),
-              duration: Duration(seconds: 1),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -227,7 +233,10 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
                   icon: const Icon(Icons.paste, size: 18),
                   label: const Text('Dán'),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                   ),
                 ),
               ],
@@ -283,10 +292,7 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _addTag,
-                  child: const Text('Thêm'),
-                ),
+                FilledButton(onPressed: _addTag, child: const Text('Thêm')),
               ],
             ),
             const SizedBox(height: 12),
@@ -301,9 +307,7 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
                     label: Text(tag),
                     onDeleted: () => _removeTag(tag),
                     backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
-                    labelStyle: TextStyle(
-                      color: colorScheme.primary,
-                    ),
+                    labelStyle: TextStyle(color: colorScheme.primary),
                   );
                 }).toList(),
               ),
@@ -320,8 +324,9 @@ class _DocumentEditorScreenState extends State<DocumentEditorScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Text(isEditing ? 'Cập nhật' : 'Tạo mới'),

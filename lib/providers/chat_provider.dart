@@ -38,6 +38,28 @@ class ChatProvider extends ChangeNotifier {
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
       _firestore.collection('chatRooms');
 
+  String _normalizePartnerStatus(Map<String, dynamic> partnerData) {
+    final String rawStatus =
+        (partnerData['study_status'] as String? ??
+                partnerData['studyStatus'] as String? ??
+                partnerData['status'] as String? ??
+                '')
+            .trim();
+
+    if (rawStatus.isNotEmpty) {
+      final String lowered = rawStatus.toLowerCase();
+      if (lowered.contains('chưa cập nhật') || lowered.contains('unknown')) {
+        return 'Hoạt động gần đây';
+      }
+      return rawStatus;
+    }
+
+    if ((partnerData['isOnline'] as bool?) == true) {
+      return 'Đang hoạt động';
+    }
+    return 'Hoạt động gần đây';
+  }
+
   String roomIdForUsers(String userA, String userB) {
     final List<String> participants = <String>[userA, userB]..sort();
     return '${participants[0]}_${participants[1]}';
@@ -160,11 +182,7 @@ class ChatProvider extends ChangeNotifier {
               partnerAvatarUrl:
                   partnerData['avatarUrl'] as String? ??
                   partnerData['photoUrl'] as String?,
-              partnerStatus:
-                  partnerData['study_status'] as String? ??
-                  ((partnerData['isOnline'] as bool?) == true
-                      ? 'Đang online'
-                      : 'Ngoại tuyến'),
+              partnerStatus: _normalizePartnerStatus(partnerData),
               lastMessage: room.lastMessage,
               lastMessageTime: room.lastMessageTime,
               unreadCount: room.unreadCount[currentUserId] ?? 0,

@@ -114,7 +114,10 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     final String? currentUserId = _auth.currentUser?.uid;
     if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bạn cần đăng nhập để chia sẻ tài liệu.')),
+        const SnackBar(
+          content: Text('Bạn cần đăng nhập để chia sẻ tài liệu.'),
+          duration: Duration(seconds: 2),
+        ),
       );
       return;
     }
@@ -183,6 +186,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Bạn chỉ có thể chia sẻ cho bạn học đã từng nhắn tin.'),
+          duration: Duration(seconds: 2),
         ),
       );
       return;
@@ -279,7 +283,10 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã chia sẻ tài liệu cho ${selectedPeer.name}')),
+      SnackBar(
+        content: Text('Đã chia sẻ tài liệu cho ${selectedPeer.name}'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 

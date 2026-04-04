@@ -54,6 +54,7 @@ Future<void> showDictionaryPopupOverlay({
                           ? 'Không tìm thấy nghĩa của "$word"'
                           : 'Lỗi tra từ điển: ${snapshot.error}',
                     ),
+                    duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

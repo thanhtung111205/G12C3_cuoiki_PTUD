@@ -51,8 +51,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   String _formatDate(DateTime dt) {
     final List<String> months = [
-      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
+      'Tháng 1',
+      'Tháng 2',
+      'Tháng 3',
+      'Tháng 4',
+      'Tháng 5',
+      'Tháng 6',
+      'Tháng 7',
+      'Tháng 8',
+      'Tháng 9',
+      'Tháng 10',
+      'Tháng 11',
+      'Tháng 12',
     ];
     return '${dt.day} ${months[dt.month - 1]}, ${dt.year}'
         '  ·  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -135,15 +145,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 }
               });
             },
-          ),
-          // Open in browser
-          IconButton(
-            icon: Icon(
-              Icons.open_in_browser_rounded,
-              color: textSecondary,
-              size: 22,
-            ),
-            onPressed: () => print('Open URL: ${widget.article.link}'),
           ),
           const SizedBox(width: 4),
         ],

@@ -315,6 +315,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                   partnerId: peer.id,
                   partnerName: peer.displayName,
                   partnerAvatarUrl: peer.avatarUrl,
+                  partnerStatus: peer.studyStatus,
                 ),
               ),
             );

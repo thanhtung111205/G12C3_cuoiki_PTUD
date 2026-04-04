@@ -28,14 +28,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi email đặt lại mật khẩu.')),
+        const SnackBar(
+          content: Text('Đã gửi email đặt lại mật khẩu.'),
+          duration: Duration(seconds: 2),
+        ),
       );
       Navigator.of(context).pop();
     } on Exception catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -203,6 +203,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       const SnackBar(
         content: Text('Đã đưa bộ thẻ về trạng thái ban đầu.'),
         behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -299,6 +300,14 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
         audioUrl: audioUrl,
         phonetic: phonetic,
       );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã thêm flashcard.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
@@ -308,6 +317,14 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       card.id,
       english: result.english,
       meaning: result.meaning,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã cập nhật flashcard.'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 
@@ -331,24 +348,35 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
       setState(() {
         _frontIndex = 0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Đã xoá flashcard'),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Hoàn tác',
-            textColor: AppColors.periwinkle,
-            onPressed: () {
-              _provider.restoreCard(userId, deck.id, removedCard);
-              if (mounted) {
-                setState(() {
-                  _frontIndex = removedIndex;
-                });
-              }
-            },
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Row(
+              children: <Widget>[
+                const Expanded(child: Text('Đã xoá flashcard')),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.periwinkle,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () {
+                    _provider.restoreCard(userId, deck.id, removedCard);
+                    if (mounted) {
+                      setState(() {
+                        _frontIndex = removedIndex;
+                      });
+                    }
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                  child: const Text('Hoàn tác'),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
           ),
-        ),
-      );
+        );
     }
   }
 
@@ -1105,6 +1133,7 @@ class _FlashcardEditorSheetState extends State<_FlashcardEditorSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vui lòng nhập cả tiếng Anh và nghĩa tiếng Việt.'),
+          duration: Duration(seconds: 2),
         ),
       );
       return;
