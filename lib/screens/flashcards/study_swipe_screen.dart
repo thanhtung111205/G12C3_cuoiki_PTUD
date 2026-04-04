@@ -21,7 +21,7 @@ class FlashcardStudyScreen extends StatefulWidget {
 
 class _FlashcardStudyScreenState extends State<FlashcardStudyScreen>
     with SingleTickerProviderStateMixin {
-  static const Duration _shakeLockDuration = Duration(milliseconds: 1500);
+  static const Duration _shakeLockDuration = Duration(milliseconds: 4000);
 
   final FlashcardProvider _provider = FlashcardProvider.instance;
   final CardSwiperController _swiperController = CardSwiperController();
