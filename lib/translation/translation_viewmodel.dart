@@ -9,7 +9,9 @@ class TranslationViewModel extends ChangeNotifier {
   final TranslationService service;
   final DictionaryService dictionaryService = DictionaryService();
   final TranslationCache cache = TranslationCache();
-  final Debouncer<String> _debouncer = Debouncer(delay: const Duration(milliseconds: 450));
+  final Debouncer<String> _debouncer = Debouncer(
+    delay: const Duration(milliseconds: 450),
+  );
 
   TranslationViewModel({required this.service}) {
     _debouncer.action = _performTranslate;
@@ -25,15 +27,20 @@ class TranslationViewModel extends ChangeNotifier {
   DictionaryEntry? dictionaryEntry;
   bool isSingleWord = false;
 
+  @override
   void dispose() {
     _debouncer.dispose();
     super.dispose();
   }
 
-  void requestTranslation({required String selected, required String context, String target = 'vi'}) {
+  void requestTranslation({
+    required String selected,
+    required String context,
+    String target = 'vi',
+  }) {
     final words = selected.trim().split(RegExp(r'\s+'));
     isSingleWord = words.length == 1 && selected.trim().isNotEmpty;
-    
+
     // Check cache first
     final cached = cache.get(selected, context);
     if (cached != null) {
@@ -74,7 +81,11 @@ class TranslationViewModel extends ChangeNotifier {
 
     try {
       // 1. Dịch text
-      final res = await service.translate(selected: selected, context: context, target: target);
+      final res = await service.translate(
+        selected: selected,
+        context: context,
+        target: target,
+      );
       original = selected;
       translated = res.translatedText;
       explanation = res.explanation;

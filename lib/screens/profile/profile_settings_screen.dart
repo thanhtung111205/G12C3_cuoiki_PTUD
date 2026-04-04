@@ -409,6 +409,24 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color sheetBg = isDark ? const Color(0xFF1A1A22) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : AppColors.deepPurple;
+    final Color closeColor = isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : AppColors.lightTextSecondary;
+    final Color fieldFill = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.lavender.withValues(alpha: 0.22);
+    final Color disabledFill = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : AppColors.lavender.withValues(alpha: 0.10);
+    final Color textColor = isDark ? Colors.white : AppColors.lightText;
+    final Color subtleText = isDark
+        ? Colors.white.withValues(alpha: 0.70)
+        : AppColors.lightTextSecondary;
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -418,8 +436,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           margin: const EdgeInsets.symmetric(horizontal: 12),
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: sheetBg,
             borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : AppColors.lavender.withValues(alpha: 0.7),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -427,19 +450,19 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Chỉnh sửa hồ sơ',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.deepPurple,
+                        color: titleColor,
                       ),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: closeColor),
                   ),
                 ],
               ),
@@ -460,10 +483,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               TextField(
                 controller: _nameController,
                 textInputAction: TextInputAction.done,
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'Tên người dùng',
+                  labelStyle: TextStyle(color: subtleText),
                   filled: true,
-                  fillColor: AppColors.lavender.withValues(alpha: 0.22),
+                  fillColor: fieldFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -474,10 +499,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               TextFormField(
                 initialValue: widget.initialEmail,
                 enabled: false,
+                style: TextStyle(color: subtleText),
                 decoration: InputDecoration(
                   labelText: 'Email',
+                  labelStyle: TextStyle(color: subtleText),
                   filled: true,
-                  fillColor: AppColors.lavender.withValues(alpha: 0.10),
+                  fillColor: disabledFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -489,6 +516,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 onPressed: _onSave,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.deepPurple,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.deepPurple.withValues(
+                    alpha: 0.45,
+                  ),
+                  disabledForegroundColor: Colors.white.withValues(alpha: 0.75),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -698,6 +730,13 @@ class _EditableAvatarPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color outlineColor = isDark
+        ? Colors.white.withValues(alpha: 0.35)
+        : AppColors.periwinkle.withValues(alpha: 0.45);
+    final Color textColor = isDark ? Colors.white : AppColors.deepPurple;
+
     return Column(
       children: <Widget>[
         _ProfileAvatar(
@@ -717,6 +756,10 @@ class _EditableAvatarPreview extends StatelessWidget {
               onPressed: onPick,
               icon: const Icon(Icons.photo_library_rounded),
               label: const Text('Đổi ảnh'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: textColor,
+                side: BorderSide(color: outlineColor),
+              ),
             ),
             TextButton.icon(
               onPressed: onRemove,

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import 'package:latlong2/latlong.dart' as latlng;
 import '../../models/nearby_study_peer.dart';
 import '../../services/location_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/nearby_map_widgets.dart';
 import 'chat_room_screen.dart';
 
 class NearbyMapScreen extends StatefulWidget {
@@ -303,7 +303,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return _PeerBottomSheet(
+        return NearbyPeerBottomSheet(
           peer: peer,
           distanceMeters: distance,
           onStartChat: () {
@@ -354,6 +354,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+
     if (_isLoading) {
       return _buildFullScreenState(
         title: 'Đang khởi tạo Bản đồ Bạn học ở gần',
@@ -419,7 +422,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF101014) : Colors.white,
       body: Stack(
         children: <Widget>[
           Positioned.fill(
@@ -454,19 +457,19 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      _BackButtonChip(
+                      NearbyMapBackButtonChip(
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _InfoChip(
+                        child: NearbyMapInfoChip(
                           title: 'Bản đồ bạn học gần',
                           subtitle:
                               '${_nearbyPeers.length} người trong bán kính 2km',
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _PrivacySwitchCard(
+                      NearbyMapPrivacySwitchCard(
                         isVisible: _isLocationVisible,
                         isSaving: _isSavingVisibility,
                         onChanged: _toggleVisibility,
@@ -475,7 +478,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
                   ),
                   if (_statusMessage != null) ...<Widget>[
                     const SizedBox(height: 12),
-                    _StatusBanner(message: _statusMessage!),
+                    NearbyMapStatusBanner(message: _statusMessage!),
                   ],
                 ],
               ),
@@ -486,14 +489,16 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: _EmptyNearbyCard(isLocationVisible: _isLocationVisible),
+                child: NearbyMapEmptyNearbyCard(
+                  isLocationVisible: _isLocationVisible,
+                ),
               ),
             ),
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.deepPurple,
+        backgroundColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
+        foregroundColor: isDark ? AppColors.periwinkle : AppColors.deepPurple,
         onPressed: _bootstrapNearbyMap,
         child: const Icon(Icons.refresh),
       ),
@@ -505,8 +510,21 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     required String message,
     required Widget child,
   }) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color pageBg = isDark
+        ? const Color(0xFF101014)
+        : const Color(0xFFF7F4FF);
+    final Color circleBg = isDark
+        ? const Color(0xFF1D1A2B)
+        : AppColors.lavender;
+    final Color titleColor = isDark ? Colors.white : AppColors.lightText;
+    final Color messageColor = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F4FF),
+      backgroundColor: pageBg,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -516,8 +534,8 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               Container(
                 width: 80,
                 height: 80,
-                decoration: const BoxDecoration(
-                  color: AppColors.lavender,
+                decoration: BoxDecoration(
+                  color: circleBg,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -530,19 +548,19 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.lightText,
+                  color: titleColor,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.lightTextSecondary,
+                  color: messageColor,
                   height: 1.4,
                 ),
               ),
@@ -550,387 +568,6 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               child,
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.lightText,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.lightTextSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BackButtonChip extends StatelessWidget {
-  const _BackButtonChip({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.94),
-      shape: const CircleBorder(),
-      elevation: 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: const SizedBox(
-          width: 46,
-          height: 46,
-          child: Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.lightText,
-            size: 22,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacySwitchCard extends StatelessWidget {
-  const _PrivacySwitchCard({
-    required this.isVisible,
-    required this.isSaving,
-    required this.onChanged,
-  });
-
-  final bool isVisible;
-  final bool isSaving;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            isVisible ? 'Hiện' : 'Ẩn',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.lightText,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Switch(
-            value: isVisible,
-            onChanged: isSaving ? null : onChanged,
-            activeColor: AppColors.deepPurple,
-            activeTrackColor: AppColors.deepPurple.withValues(alpha: 0.28),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: Colors.grey,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.7)),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.lightTextSecondary,
-          height: 1.35,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyNearbyCard extends StatelessWidget {
-  const _EmptyNearbyCard({required this.isLocationVisible});
-
-  final bool isLocationVisible;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 26,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(
-            Icons.person_search_outlined,
-            color: AppColors.deepPurple,
-            size: 28,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            isLocationVisible
-                ? 'Chưa có bạn học nào trong bán kính 2km.'
-                : 'Bạn đang ẩn vị trí, nên sẽ không hiển thị với người khác.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.lightTextSecondary,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PeerBottomSheet extends StatelessWidget {
-  const _PeerBottomSheet({
-    required this.peer,
-    required this.distanceMeters,
-    required this.onStartChat,
-  });
-
-  final NearbyStudyPeer peer;
-  final double? distanceMeters;
-  final VoidCallback onStartChat;
-
-  String _distanceLabel() {
-    final double? meters = distanceMeters ?? peer.distanceMeters;
-    if (meters == null) return 'Đang tính khoảng cách';
-
-    if (meters < 1000) {
-      return 'Cách bạn ${meters.toStringAsFixed(0)}m';
-    }
-
-    return 'Cách bạn ${(meters / 1000).toStringAsFixed(1)}km';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.lavender,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _PeerAvatar(avatarUrl: peer.avatarUrl),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        peer.displayName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.lightText,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _distanceLabel(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.lightTextSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _StatusBadge(label: peer.studyStatus),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: onStartChat,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepPurple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Bắt đầu trò chuyện',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PeerAvatar extends StatelessWidget {
-  const _PeerAvatar({required this.avatarUrl});
-
-  final String? avatarUrl;
-
-  bool get _isDataUri => avatarUrl?.startsWith('data:image/') == true;
-
-  @override
-  Widget build(BuildContext context) {
-    final String? url = avatarUrl?.trim().isNotEmpty == true ? avatarUrl : null;
-
-    return Container(
-      width: 72,
-      height: 72,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.lavender.withValues(alpha: 0.55),
-        border: Border.all(color: AppColors.lavender),
-      ),
-      child: ClipOval(
-        child: url == null
-            ? const Icon(Icons.person, color: AppColors.deepPurple, size: 36)
-            : _isDataUri
-            ? Image.memory(
-                base64Decode(url.split(',').last),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.person,
-                  color: AppColors.deepPurple,
-                  size: 36,
-                ),
-              )
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.person,
-                  color: AppColors.deepPurple,
-                  size: 36,
-                ),
-              ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.lavender.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.lightText,
         ),
       ),
     );

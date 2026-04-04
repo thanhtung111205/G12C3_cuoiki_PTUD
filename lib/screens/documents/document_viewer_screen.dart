@@ -36,7 +36,9 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     _documentProvider = DocumentProvider.instance;
     _contentController = TextEditingController(text: widget.document.content);
     _translationViewModel = TranslationViewModel(
-      service: TranslationService(endpoint: 'https://api.mymemory.translated.net/get'),
+      service: TranslationService(
+        endpoint: 'https://api.mymemory.translated.net/get',
+      ),
     );
   }
 
@@ -117,17 +119,17 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       return;
     }
 
-    final QuerySnapshot<Map<String, dynamic>> roomSnapshot =
-        await _firestore
-            .collection('chatRooms')
-            .where('participants', arrayContains: currentUserId)
-            .get();
+    final QuerySnapshot<Map<String, dynamic>> roomSnapshot = await _firestore
+        .collection('chatRooms')
+        .where('participants', arrayContains: currentUserId)
+        .get();
 
     final Set<String> partnerIds = <String>{};
     for (final QueryDocumentSnapshot<Map<String, dynamic>> roomDoc
         in roomSnapshot.docs) {
       final Map<String, dynamic> roomData = roomDoc.data();
-      final String lastMessage = (roomData['lastMessage'] as String? ?? '').trim();
+      final String lastMessage = (roomData['lastMessage'] as String? ?? '')
+          .trim();
       if (lastMessage.isEmpty) {
         continue;
       }
@@ -186,22 +188,33 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       return;
     }
 
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+
     final _SharePeer? selectedPeer = await showModalBottomSheet<_SharePeer>(
       context: context,
       showDragHandle: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
       builder: (BuildContext sheetContext) {
+        final ThemeData sheetTheme = Theme.of(sheetContext);
+        final Color sheetTextColor = sheetTheme.colorScheme.onSurface;
+        final Color sheetSubtleColor = sheetTheme.colorScheme.onSurface
+            .withValues(alpha: 0.72);
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Chia sẻ cho bạn học',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: sheetTextColor,
+                    ),
                   ),
                 ),
               ),
@@ -209,21 +222,33 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: peers.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    color: sheetSubtleColor.withValues(alpha: 0.3),
+                  ),
                   itemBuilder: (BuildContext context, int index) {
                     final _SharePeer peer = peers[index];
                     return ListTile(
+                      tileColor: Colors.transparent,
                       leading: CircleAvatar(
+                        backgroundColor:
+                            sheetTheme.colorScheme.surfaceContainerHighest,
                         backgroundImage:
                             peer.avatarUrl?.trim().isNotEmpty == true
                             ? NetworkImage(peer.avatarUrl!)
                             : null,
                         child: peer.avatarUrl?.trim().isNotEmpty == true
                             ? null
-                            : const Icon(Icons.person),
+                            : Icon(Icons.person, color: sheetTextColor),
                       ),
-                      title: Text(peer.name),
-                      trailing: const Icon(Icons.chevron_right),
+                      title: Text(
+                        peer.name,
+                        style: TextStyle(color: sheetTextColor),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: sheetSubtleColor,
+                      ),
                       onTap: () => Navigator.of(sheetContext).pop(peer),
                     );
                   },
@@ -266,6 +291,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final bool isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -311,14 +337,18 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 Icon(
                   Icons.info_outline,
                   size: 16,
-                  color: colorScheme.onSurface.withOpacity(0.6),
+                  color: colorScheme.onSurface.withValues(
+                    alpha: isDark ? 0.82 : 0.6,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '${widget.document.wordCount} từ • Cập nhật: ${_formatDate(widget.document.updatedAt)}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.6),
+                      color: colorScheme.onSurface.withValues(
+                        alpha: isDark ? 0.82 : 0.6,
+                      ),
                     ),
                   ),
                 ),

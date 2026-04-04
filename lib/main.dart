@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -62,6 +61,14 @@ class _MyAppState extends State<MyApp> {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: Colors.white,
       appBarTheme: const AppBarTheme(elevation: 0),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        contentTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+        actionTextColor: Colors.white,
+      ),
     );
   }
 
@@ -83,6 +90,15 @@ class _MyAppState extends State<MyApp> {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFF101014),
       appBarTheme: const AppBarTheme(elevation: 0),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF2A223D),
+        contentTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+        actionTextColor: Colors.white,
+      ),
     );
   }
 
@@ -121,9 +137,7 @@ class _MyAppState extends State<MyApp> {
               return const AuthScreen();
             },
           ),
-          routes: {
-            '/translate_demo': (_) => const TranslationDemoScreen(),
-          },
+          routes: {'/translate_demo': (_) => const TranslationDemoScreen()},
         );
       },
     );

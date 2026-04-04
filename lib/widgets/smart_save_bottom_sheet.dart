@@ -39,11 +39,7 @@ Future<void> showSmartSaveBottomSheet(
 ///         ├─ maps result → Firestore card doc
 ///         └─ atomically increments deck.cardCount
 class SmartSaveBottomSheet extends StatefulWidget {
-  const SmartSaveBottomSheet({
-    super.key,
-    required this.word,
-    this.userId,
-  });
+  const SmartSaveBottomSheet({super.key, required this.word, this.userId});
 
   final String word;
   final String? userId;
@@ -59,8 +55,8 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
   // ── Local state ───────────────────────────────────────────────────────────
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
-  String? _savingDeckId;   // deckId currently being saved (shows per-item loader)
-  bool _isSaving = false;  // global flag to prevent double-tap
+  String? _savingDeckId; // deckId currently being saved (shows per-item loader)
+  bool _isSaving = false; // global flag to prevent double-tap
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
@@ -77,8 +73,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
     return all.where((d) => d.title.toLowerCase().contains(q)).toList();
   }
 
-  void _onSearchChanged(String value) =>
-      setState(() => _query = value.trim());
+  void _onSearchChanged(String value) => setState(() => _query = value.trim());
 
   // ── Save logic ────────────────────────────────────────────────────────────
 
@@ -103,26 +98,34 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle_rounded,
-                  color: Colors.white, size: 18),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
               const SizedBox(width: 10),
               Text(
                 'Đã lưu "${widget.word}" vào bộ thẻ thành công ✨',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
           backgroundColor: AppColors.deepPurple,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           duration: const Duration(seconds: 3),
         ),
       );
     } on WordNotFoundException {
       if (!mounted) return;
       _showErrorSnack(
-          'Không tìm thấy nghĩa của "${widget.word}" trong từ điển.');
+        'Không tìm thấy nghĩa của "${widget.word}" trong từ điển.',
+      );
     } catch (e) {
       if (!mounted) return;
       _showErrorSnack('Lỗi: ${e.toString()}');
@@ -141,19 +144,26 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: Colors.white, size: 18),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(message,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
         backgroundColor: Colors.redAccent.shade700,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -176,11 +186,11 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                   ? AppColors.darkSurface
                   : Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: const Text(
                 'Tạo bộ Flashcard mới',
-                style:
-                    TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
               content: Form(
                 key: formKey,
@@ -189,30 +199,33 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                   autofocus: true,
                   decoration: InputDecoration(
                     hintText: 'Tên bộ thẻ...',
-                    prefixIcon: const Icon(Icons.folder_rounded,
-                        color: AppColors.periwinkle),
+                    prefixIcon: const Icon(
+                      Icons.folder_rounded,
+                      color: AppColors.periwinkle,
+                    ),
                     filled: true,
-                    fillColor:
-                        Theme.of(ctx).brightness == Brightness.dark
-                            ? AppColors.darkCard
-                            : AppColors.lavender,
+                    fillColor: Theme.of(ctx).brightness == Brightness.dark
+                        ? AppColors.darkCard
+                        : AppColors.lavender,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 14),
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty)
-                          ? 'Vui lòng nhập tên bộ thẻ'
-                          : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Vui lòng nhập tên bộ thẻ'
+                      : null,
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed:
-                      creating ? null : () => Navigator.of(dialogCtx).pop(),
+                  onPressed: creating
+                      ? null
+                      : () => Navigator.of(dialogCtx).pop(),
                   child: const Text('Hủy'),
                 ),
                 ElevatedButton(
@@ -229,12 +242,14 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                           }
 
                           try {
-                            final newDeckId = await provider.addDeck(uid,
-                                title: nameCtrl.text.trim());
+                            final newDeckId = await provider.addDeck(
+                              uid,
+                              title: nameCtrl.text.trim(),
+                            );
                             if (dialogCtx.mounted) {
                               Navigator.of(dialogCtx).pop();
                             }
-                            // Tự động lưu luôn từ vựng vào bộ thẻ vừa tạo 
+                            // Tự động lưu luôn từ vựng vào bộ thẻ vừa tạo
                             if (mounted) {
                               _saveWord(newDeckId);
                             }
@@ -246,7 +261,8 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                     backgroundColor: AppColors.deepPurple,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
                   child: creating
@@ -254,11 +270,14 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Tạo',
-                          style:
-                              TextStyle(fontWeight: FontWeight.w700)),
+                      : const Text(
+                          'Tạo',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
                 ),
               ],
             );
@@ -272,8 +291,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final double sheetHeight =
-        MediaQuery.of(context).size.height * 0.48;
+    final double sheetHeight = MediaQuery.of(context).size.height * 0.48;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -326,7 +344,9 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 // Highlighted word chip
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 5),
+                    horizontal: 14,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.deepPurple.withValues(alpha: 0.3)
@@ -379,7 +399,9 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     isDense: true,
                   ),
                 ),
@@ -398,8 +420,10 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 final decks = _filtered(provider.decks);
 
                 return ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   itemCount: decks.length + 1, // +1 for "Create" button
                   itemBuilder: (_, index) {
                     // ── Create deck button (first item) ──────────────────
@@ -452,8 +476,7 @@ class _CreateDeckButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               border: Border.all(
                 color: isDark
@@ -489,8 +512,9 @@ class _CreateDeckButton extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.deepPurple
-                        .withValues(alpha: isDark ? 0.85 : 1.0),
+                    color: AppColors.deepPurple.withValues(
+                      alpha: isDark ? 0.85 : 1.0,
+                    ),
                   ),
                 ),
               ],
@@ -529,16 +553,15 @@ class _DeckTile extends StatelessWidget {
           onTap: isDisabled ? null : onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: isDark
                   ? (isSaving
-                      ? AppColors.deepPurple.withValues(alpha: 0.2)
-                      : AppColors.darkCard)
+                        ? AppColors.deepPurple.withValues(alpha: 0.2)
+                        : AppColors.darkCard)
                   : (isSaving
-                      ? AppColors.lavender.withValues(alpha: 0.8)
-                      : const Color(0xFFF9F8FD)),
+                        ? AppColors.lavender.withValues(alpha: 0.8)
+                        : const Color(0xFFF9F8FD)),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSaving
@@ -573,9 +596,7 @@ class _DeckTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? AppColors.darkText
-                          : AppColors.lightText,
+                      color: isDark ? AppColors.darkText : AppColors.lightText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -596,7 +617,9 @@ class _DeckTile extends StatelessWidget {
                 else
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.darkBackground

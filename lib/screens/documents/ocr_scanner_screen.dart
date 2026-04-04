@@ -155,9 +155,13 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final bool hasImage = _imagePath != null;
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: isDark
+          ? const Color(0xFF101014)
+          : const Color(0xFFF0EEF8),
       extendBodyBehindAppBar: true,
       appBar: _buildAppBar(),
       body: Column(
@@ -222,10 +226,20 @@ class _CameraPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color bgColor = isDark
+        ? const Color(0xFF151520)
+        : const Color(0xFFF0EEF8);
+    final Color headline = isDark ? Colors.white : AppColors.deepPurple;
+    final Color body = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary.withValues(alpha: 0.9);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        color: const Color(0xFFF0EEF8), // nền xám nhạt tím
+        color: bgColor,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -252,12 +266,12 @@ class _CameraPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             // ── Label chính ──────────────────────────────────────────────────
-            const Text(
+            Text(
               'Nhấn để chụp ảnh',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: AppColors.deepPurple,
+                color: headline,
               ),
             ),
             const SizedBox(height: 8),
@@ -267,11 +281,7 @@ class _CameraPlaceholder extends StatelessWidget {
               child: Text(
                 'Camera sẽ mở ra để bạn chụp tài liệu cần nhận diện chữ.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.lightTextSecondary.withValues(alpha: 0.9),
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 13, color: body, height: 1.5),
               ),
             ),
             const SizedBox(height: 28),
@@ -345,10 +355,23 @@ class _TextPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color panelBg = isDark ? const Color(0xFF1A1A22) : Colors.white;
+    final Color panelBorder = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : AppColors.lavender;
+    final Color labelColor = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.lightTextSecondary;
+    final Color overlayColor = isDark
+        ? Colors.black.withValues(alpha: 0.66)
+        : Colors.white.withValues(alpha: 0.88);
+
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: panelBg,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(28),
           topRight: Radius.circular(28),
         ),
@@ -382,10 +405,10 @@ class _TextPanel extends StatelessWidget {
                   isPreviewMode
                       ? 'Văn bản nhận diện được'
                       : 'Chụp ảnh để nhận diện chữ',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.lightTextSecondary,
+                    color: labelColor,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -411,7 +434,7 @@ class _TextPanel extends StatelessWidget {
                 if (isExtracting)
                   Positioned.fill(
                     child: Container(
-                      color: Colors.white.withValues(alpha: 0.88),
+                      color: overlayColor,
                       child: const Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -471,6 +494,13 @@ class _ActionToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color toolbarBg = isDark ? const Color(0xFF1A1A22) : Colors.white;
+    final Color toolbarBorder = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : AppColors.lavender;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -479,8 +509,8 @@ class _ActionToolbar extends StatelessWidget {
         MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.lavender, width: 1)),
+        color: toolbarBg,
+        border: Border(top: BorderSide(color: toolbarBorder, width: 1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

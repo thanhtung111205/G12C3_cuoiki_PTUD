@@ -76,10 +76,7 @@ class ArticleCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     // Source tag
-                    _SourceTag(
-                      source: article.source,
-                      isDark: isDark,
-                    ),
+                    _SourceTag(source: article.source, isDark: isDark),
                     const SizedBox(height: 6),
                     // Title
                     Text(
@@ -152,7 +149,7 @@ class _Thumbnail extends StatelessWidget {
                 fit: BoxFit.cover,
                 loadingBuilder: (_, child, progress) =>
                     progress == null ? child : _placeholder(),
-                errorBuilder: (_, _e, _s) => _placeholder(),
+                errorBuilder: (_, e, s) => _placeholder(),
               )
             : _placeholder(),
       ),
@@ -163,11 +160,7 @@ class _Thumbnail extends StatelessWidget {
     return Container(
       color: AppColors.lavender,
       child: const Center(
-        child: Icon(
-          Icons.image_rounded,
-          color: AppColors.periwinkle,
-          size: 30,
-        ),
+        child: Icon(Icons.image_rounded, color: AppColors.periwinkle, size: 30),
       ),
     );
   }
@@ -222,10 +215,8 @@ class _BookmarkButton extends StatelessWidget {
         padding: const EdgeInsets.only(left: 8, top: 2),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          transitionBuilder: (child, animation) => ScaleTransition(
-            scale: animation,
-            child: child,
-          ),
+          transitionBuilder: (child, animation) =>
+              ScaleTransition(scale: animation, child: child),
           child: Icon(
             isBookmarked
                 ? Icons.bookmark_rounded
@@ -235,8 +226,8 @@ class _BookmarkButton extends StatelessWidget {
             color: isBookmarked
                 ? AppColors.deepPurple
                 : (isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary),
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary),
           ),
         ),
       ),
