@@ -11,8 +11,10 @@ class ShakeDetector {
   final bool Function()? isLocked;
 
   StreamSubscription<AccelerometerEvent>? _sub;
-  final StreamController<void> _onShakeController = StreamController.broadcast();
-  final StreamController<void> _onIgnoredShakeController = StreamController.broadcast();
+  final StreamController<void> _onShakeController =
+      StreamController.broadcast();
+  final StreamController<void> _onIgnoredShakeController =
+      StreamController.broadcast();
 
   DateTime? _lastShakeAt;
   final List<DateTime> _peakTimestamps = [];
@@ -52,7 +54,8 @@ class ShakeDetector {
 
       // if we have enough peaks and debounce passed, trigger
       if (_peakTimestamps.length >= shakeCount) {
-        if (_lastShakeAt == null || now.difference(_lastShakeAt!) > debounceDuration) {
+        if (_lastShakeAt == null ||
+            now.difference(_lastShakeAt!) > debounceDuration) {
           if (isLocked?.call() == true) {
             _onIgnoredShakeController.add(null);
           } else {

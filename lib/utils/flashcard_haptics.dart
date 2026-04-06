@@ -11,10 +11,9 @@ class FlashcardHaptics {
 
   static Future<void> confirmShuffle() async {
     try {
-      await _channel.invokeMethod<void>(
-        'vibrate',
-        const <String, dynamic>{'durationMs': 120},
-      );
+      await _channel.invokeMethod<void>('vibrate', const <String, dynamic>{
+        'durationMs': 120,
+      });
       return;
     } catch (_) {
       try {
@@ -25,10 +24,9 @@ class FlashcardHaptics {
 
   static Future<void> cooldownThud() async {
     try {
-      await _channel.invokeMethod<void>(
-        'vibrate',
-        const <String, dynamic>{'durationMs': 220},
-      );
+      await _channel.invokeMethod<void>('vibrate', const <String, dynamic>{
+        'durationMs': 220,
+      });
       return;
     } catch (_) {
       try {
