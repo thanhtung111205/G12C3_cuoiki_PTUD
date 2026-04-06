@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/dictionary_entry_model.dart';
 import '../services/dictionary_service.dart';
 import '../utils/app_colors.dart';
+import 'smart_save_bottom_sheet.dart';
 
 typedef DictionaryPopupSaveCallback =
     void Function(BuildContext sheetContext, DictionaryEntry entry);
@@ -73,7 +74,15 @@ Future<void> showDictionaryPopupOverlay({
             return DictionaryPopupOverlay(
               entry: snapshot.data!,
               audioPlayer: audioPlayer,
-              onSave: () => onSave(sheetContext, snapshot.data!),
+              onSave: () {
+                // Thay vì gọi callback cũ, ta mở bảng lưu thông minh kèm nghĩa
+                Navigator.pop(sheetContext);
+                showSmartSaveBottomSheet(
+                  context,
+                  word: snapshot.data!.word,
+                  meaning: snapshot.data!.definition,
+                );
+              },
             );
           },
         ),

@@ -133,31 +133,39 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 const Spacer(),
-                Text(
-                  widget.card.english,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    color: primaryText,
-                  ),
-                ),
-                if (widget.card.phonetic != null &&
-                    widget.card.phonetic!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.card.phonetic!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: accent,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w500,
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.card.english,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                            color: primaryText,
+                          ),
+                        ),
+                        if (widget.card.phonetic != null &&
+                            widget.card.phonetic!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.card.phonetic!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: accent,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Chạm để lật thẻ',
@@ -299,17 +307,21 @@ class _FlashcardBackFaceState extends State<_FlashcardBackFace> {
                 'Mặt sau',
                 style: TextStyle(color: accent, fontWeight: FontWeight.w800),
               ),
-            ),
-            const SizedBox(height: 22),
-            Text(
-              widget.card.meaning,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: primaryText,
-              ),
-            ),
-            const SizedBox(height: 18),
+             ),
+             const SizedBox(height: 22),
+             Expanded(
+               child: SingleChildScrollView(
+                 child: Text(
+                   widget.card.meaning,
+                   style: TextStyle(
+                     fontSize: 28,
+                     fontWeight: FontWeight.w900,
+                     color: primaryText,
+                   ),
+                 ),
+               ),
+             ),
+             const SizedBox(height: 18),
             Text(
               'Câu ví dụ',
               style: TextStyle(
