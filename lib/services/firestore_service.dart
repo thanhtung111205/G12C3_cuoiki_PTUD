@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/dictionary_service.dart';
 import '../translation/translation_service.dart';
+import '../models/dictionary_entry_model.dart';
 
 /// Lightweight service that orchestrates:
 ///   DictionaryService.lookupWord  ──▶  Firestore write (card + deck counter)
@@ -37,14 +38,34 @@ class FirestoreService {
     required String word,
     required String deckId,
     String? userId,
+    String? meaning,
   }) async {
     final String uid = userId ?? _auth.currentUser?.uid ?? '';
     if (uid.isEmpty) throw Exception('User not authenticated');
     if (word.trim().isEmpty) throw Exception('Word cannot be empty');
     if (deckId.isEmpty) throw Exception('Deck ID cannot be empty');
 
-    // ── Step 1: Lookup dictionary ─────────────────────────────────────────
-    final entry = await _dict.lookupWord(word);
+    // ── Step 1: Lookup dictionary or use provided meaning ─────────────────────────────────────────
+    late final DictionaryEntry entry;
+    String finalMeaning;
+    if (meaning != null && meaning.trim().isNotEmpty) {
+      // Use provided meaning, create a minimal entry
+      entry = DictionaryEntry(
+        word: word.trim(),
+        definition: meaning.trim(),
+        phonetic: '',
+        partOfSpeech: '',
+        example: '',
+        audioUrl: '',
+      );
+      finalMeaning = meaning.trim();
+    } else {
+      // Lookup dictionary
+      entry = await _dict.lookupWord(word);
+      finalMeaning = entry.definition.trim().isEmpty
+          ? '(no definition)'
+          : entry.definition.trim();
+    }
 
     // ── Step 2: Handle Example & Translation ──────────────────────────────
     String finalExample = '';
@@ -67,9 +88,7 @@ class FirestoreService {
     // ── Step 3: Build card payload ────────────────────────────────────────
     final cardData = <String, dynamic>{
       'english': entry.word.trim(),
-      'meaning': entry.definition.trim().isEmpty
-          ? '(no definition)'
-          : entry.definition.trim(),
+      'meaning': finalMeaning,
       'example': finalExample.trim(),
       'phonetic': entry.phonetic,
       'audioUrl': entry.audioUrl,

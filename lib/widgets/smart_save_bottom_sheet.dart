@@ -14,17 +14,19 @@ import '../utils/app_colors.dart';
 /// Shows the [SmartSaveBottomSheet] as a modal bottom sheet.
 ///
 /// [word]   – the highlighted word to look up & save
+/// [meaning] – optional pre-translated meaning; if provided, skips dictionary lookup
 /// [userId] – optional override; defaults to the current Firebase user
 Future<void> showSmartSaveBottomSheet(
   BuildContext context, {
   required String word,
+  String? meaning,
   String? userId,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => SmartSaveBottomSheet(word: word, userId: userId),
+    builder: (_) => SmartSaveBottomSheet(word: word, meaning: meaning, userId: userId),
   );
 }
 
@@ -39,9 +41,10 @@ Future<void> showSmartSaveBottomSheet(
 ///         ├─ maps result → Firestore card doc
 ///         └─ atomically increments deck.cardCount
 class SmartSaveBottomSheet extends StatefulWidget {
-  const SmartSaveBottomSheet({super.key, required this.word, this.userId});
+  const SmartSaveBottomSheet({super.key, required this.word, this.meaning, this.userId});
 
   final String word;
+  final String? meaning;
   final String? userId;
 
   @override
@@ -89,6 +92,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
         word: widget.word,
         deckId: deckId,
         userId: widget.userId,
+        meaning: widget.meaning,
       );
 
       if (!mounted) return;

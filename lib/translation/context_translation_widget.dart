@@ -259,8 +259,9 @@ class _ContextTranslationWidgetState extends State<ContextTranslationWidget> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           final wordToSave = vm.original ?? selected;
+                          final meaningToSave = vm.translated;
                           Navigator.of(hostContext).pop();
-                          showSmartSaveBottomSheet(hostContext, word: wordToSave);
+                          showSmartSaveBottomSheet(hostContext, word: wordToSave, meaning: meaningToSave);
                         },
                         icon: const Icon(Icons.bookmark_add_rounded, size: 18),
                         label: const Text('Lưu vào Sổ từ / Flashcard'),
