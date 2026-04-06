@@ -8,7 +8,6 @@ class FlashcardDraft {
   final String meaning;
 }
 
-const int kFlashcardMaxChars = 100;
 
 class FlashcardEditorSheet extends StatefulWidget {
   const FlashcardEditorSheet({
@@ -58,16 +57,10 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
     if (english.isEmpty) {
       englishErr = 'Vui lòng nhập từ tiếng Anh.';
       hasError = true;
-    } else if (english.length > kFlashcardMaxChars) {
-      englishErr = 'Từ tiếng Anh không được quá $kFlashcardMaxChars ký tự.';
-      hasError = true;
     }
 
     if (meaning.isEmpty) {
       meaningErr = 'Vui lòng nhập nghĩa tiếng Việt.';
-      hasError = true;
-    } else if (meaning.length > kFlashcardMaxChars) {
-      meaningErr = 'Nghĩa không được quá $kFlashcardMaxChars ký tự.';
       hasError = true;
     }
 
@@ -171,7 +164,6 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                       textInputAction: TextInputAction.next,
                       enabled: !_isSaving,
                       style: TextStyle(color: inputColor),
-                      maxLength: kFlashcardMaxChars,
                       onChanged: (_) {
                         if (_englishError != null) {
                           setState(() => _englishError = null);
@@ -184,10 +176,6 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                         fillColor: fieldFill,
                         errorText: _englishError,
                         errorMaxLines: 2,
-                        counterStyle: TextStyle(
-                          color: labelColor,
-                          fontSize: 11,
-                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
@@ -216,7 +204,6 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                       textInputAction: TextInputAction.done,
                       enabled: !_isSaving,
                       style: TextStyle(color: inputColor),
-                      maxLength: kFlashcardMaxChars,
                       onChanged: (_) {
                         if (_meaningError != null) {
                           setState(() => _meaningError = null);
@@ -229,10 +216,6 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                         fillColor: fieldFill,
                         errorText: _meaningError,
                         errorMaxLines: 2,
-                        counterStyle: TextStyle(
-                          color: labelColor,
-                          fontSize: 11,
-                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,

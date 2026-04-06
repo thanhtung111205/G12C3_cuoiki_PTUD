@@ -128,21 +128,22 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                const Spacer(),
-                Expanded(
+                // Vùng text có thể scroll, giới hạn ~5 dòng trước khi cần scroll
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
                   child: SingleChildScrollView(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           widget.card.english,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 40,
+                            fontSize: 36,
                             fontWeight: FontWeight.w900,
                             height: 1.05,
                             color: primaryText,
@@ -308,59 +309,63 @@ class _FlashcardBackFaceState extends State<_FlashcardBackFace> {
                 style: TextStyle(color: accent, fontWeight: FontWeight.w800),
               ),
              ),
-             const SizedBox(height: 22),
+             const SizedBox(height: 16),
+             // Phần nghĩa — scroll riêng
              Expanded(
+               flex: 2,
                child: SingleChildScrollView(
                  child: Text(
                    widget.card.meaning,
                    style: TextStyle(
-                     fontSize: 28,
+                     fontSize: 22,
                      fontWeight: FontWeight.w900,
                      color: primaryText,
                    ),
                  ),
                ),
              ),
-             const SizedBox(height: 18),
-            Text(
-              'Câu ví dụ',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: secondaryText,
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: accent,
-                        ),
-                      ),
-                    )
-                  : (hasExample
-                        ? SingleChildScrollView(
-                            child: _HighlightedSentence(
-                              sentence: displayExample,
-                              targetWord: widget.card.english,
-                            ),
-                          )
-                        : Center(
-                            child: Text(
-                              'Chưa có câu ví dụ.',
-                              style: TextStyle(
-                                color: secondaryText,
-                                fontSize: 15,
-                              ),
-                            ),
-                          )),
-            ),
+             const SizedBox(height: 14),
+             Text(
+               'Câu ví dụ',
+               style: TextStyle(
+                 fontSize: 13,
+                 fontWeight: FontWeight.w800,
+                 color: secondaryText,
+                 letterSpacing: 0.3,
+               ),
+             ),
+             const SizedBox(height: 8),
+             // Phần câu ví dụ — scroll riêng
+             Expanded(
+               flex: 3,
+               child: _isLoading
+                   ? Center(
+                       child: SizedBox(
+                         width: 20,
+                         height: 20,
+                         child: CircularProgressIndicator(
+                           strokeWidth: 2,
+                           color: accent,
+                         ),
+                       ),
+                     )
+                   : (hasExample
+                         ? SingleChildScrollView(
+                             child: _HighlightedSentence(
+                               sentence: displayExample,
+                               targetWord: widget.card.english,
+                             ),
+                           )
+                         : Center(
+                             child: Text(
+                               'Chưa có câu ví dụ.',
+                               style: TextStyle(
+                                 color: secondaryText,
+                                 fontSize: 15,
+                               ),
+                             ),
+                           )),
+             ),
           ],
         ),
       ),
