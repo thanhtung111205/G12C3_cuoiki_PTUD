@@ -136,12 +136,10 @@ class _FlashcardFrontFaceState extends State<_FlashcardFrontFace> {
                 Text(
                   widget.card.english,
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 40,
+                    fontSize: 36,
                     fontWeight: FontWeight.w900,
-                    height: 1.05,
+                    height: 1.1,
                     color: primaryText,
                   ),
                 ),
@@ -305,10 +303,8 @@ class _FlashcardBackFaceState extends State<_FlashcardBackFace> {
             const SizedBox(height: 22),
             Text(
               widget.card.meaning,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 22,
                 fontWeight: FontWeight.w900,
                 color: primaryText,
               ),
@@ -410,8 +406,8 @@ class _HighlightedSentence extends StatelessWidget {
       text: TextSpan(
         style: TextStyle(
           color: primaryText,
-          fontSize: 18,
-          height: 1.6,
+          fontSize: 15,
+          height: 1.55,
           fontWeight: FontWeight.w500,
         ),
         children: spans,

@@ -8,6 +8,8 @@ class FlashcardDraft {
   final String meaning;
 }
 
+const int kFlashcardMaxChars = 100;
+
 class FlashcardEditorSheet extends StatefulWidget {
   const FlashcardEditorSheet({
     super.key,
@@ -28,6 +30,8 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
   late final TextEditingController _englishController;
   late final TextEditingController _meaningController;
   bool _isSaving = false;
+  String? _englishError;
+  String? _meaningError;
 
   @override
   void initState() {
@@ -47,17 +51,39 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
     final String english = _englishController.text.trim();
     final String meaning = _meaningController.text.trim();
 
-    if (english.isEmpty || meaning.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập cả tiếng Anh và nghĩa tiếng Việt.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+    bool hasError = false;
+    String? englishErr;
+    String? meaningErr;
+
+    if (english.isEmpty) {
+      englishErr = 'Vui lòng nhập từ tiếng Anh.';
+      hasError = true;
+    } else if (english.length > kFlashcardMaxChars) {
+      englishErr = 'Từ tiếng Anh không được quá $kFlashcardMaxChars ký tự.';
+      hasError = true;
+    }
+
+    if (meaning.isEmpty) {
+      meaningErr = 'Vui lòng nhập nghĩa tiếng Việt.';
+      hasError = true;
+    } else if (meaning.length > kFlashcardMaxChars) {
+      meaningErr = 'Nghĩa không được quá $kFlashcardMaxChars ký tự.';
+      hasError = true;
+    }
+
+    if (hasError) {
+      setState(() {
+        _englishError = englishErr;
+        _meaningError = meaningErr;
+      });
       return;
     }
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _englishError = null;
+      _meaningError = null;
+      _isSaving = true;
+    });
 
     await Future<void>.delayed(const Duration(milliseconds: 80));
 
@@ -137,6 +163,7 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
               ),
               const SizedBox(height: 12),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Expanded(
                     child: TextField(
@@ -144,14 +171,40 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                       textInputAction: TextInputAction.next,
                       enabled: !_isSaving,
                       style: TextStyle(color: inputColor),
+                      maxLength: kFlashcardMaxChars,
+                      onChanged: (_) {
+                        if (_englishError != null) {
+                          setState(() => _englishError = null);
+                        }
+                      },
                       decoration: InputDecoration(
                         labelText: 'Tiếng Anh',
                         labelStyle: TextStyle(color: labelColor),
                         filled: true,
                         fillColor: fieldFill,
+                        errorText: _englishError,
+                        errorMaxLines: 2,
+                        counterStyle: TextStyle(
+                          color: labelColor,
+                          fontSize: 11,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                     ),
@@ -163,14 +216,40 @@ class _FlashcardEditorSheetState extends State<FlashcardEditorSheet> {
                       textInputAction: TextInputAction.done,
                       enabled: !_isSaving,
                       style: TextStyle(color: inputColor),
+                      maxLength: kFlashcardMaxChars,
+                      onChanged: (_) {
+                        if (_meaningError != null) {
+                          setState(() => _meaningError = null);
+                        }
+                      },
                       decoration: InputDecoration(
                         labelText: 'Nghĩa tiếng Việt',
                         labelStyle: TextStyle(color: labelColor),
                         filled: true,
                         fillColor: fieldFill,
+                        errorText: _meaningError,
+                        errorMaxLines: 2,
+                        counterStyle: TextStyle(
+                          color: labelColor,
+                          fontSize: 11,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                       onSubmitted: (_) => _submit(),
