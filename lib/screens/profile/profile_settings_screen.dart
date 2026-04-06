@@ -163,12 +163,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _profileData = updatedProfile;
       });
       messenger.showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật hồ sơ.')),
+        const SnackBar(
+          content: Text('Đã cập nhật hồ sơ.'),
+          duration: Duration(seconds: 2),
+        ),
       );
     } catch (error) {
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Không thể lưu hồ sơ: $error')),
+          SnackBar(
+            content: Text('Không thể lưu hồ sơ: $error'),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     } finally {}
@@ -208,9 +214,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       await AuthService.instance.signOut();
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Đã đăng xuất.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã đăng xuất.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
           (Route<dynamic> route) => false,
@@ -218,9 +227,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể đăng xuất: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể đăng xuất: $error'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -398,7 +410,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     final String name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên người dùng.')),
+        const SnackBar(
+          content: Text('Vui lòng nhập tên người dùng.'),
+          duration: Duration(seconds: 2),
+        ),
       );
       return;
     }

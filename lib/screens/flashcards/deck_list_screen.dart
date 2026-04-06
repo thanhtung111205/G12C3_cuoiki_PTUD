@@ -17,6 +17,18 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
+  void _showToast(String message, {int seconds = 2}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: seconds),
+        ),
+      );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -27,9 +39,12 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final Color pageBackground =
-        isDark ? AppColors.darkBackground : AppColors.pastelPink;
-    final Color pageForeground = isDark ? AppColors.darkText : AppColors.deepPurple;
+    final Color pageBackground = isDark
+        ? AppColors.darkBackground
+        : AppColors.pastelPink;
+    final Color pageForeground = isDark
+        ? AppColors.darkText
+        : AppColors.deepPurple;
     final String? userId = _userId;
 
     return Scaffold(
@@ -120,8 +135,12 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
 
     if (deck == null) {
       await _provider.addDeck(userId, title: result);
+      if (!mounted) return;
+      _showToast('Đã thêm bộ flashcard.');
     } else {
       await _provider.updateDeck(userId, deck.id, result);
+      if (!mounted) return;
+      _showToast('Đã cập nhật bộ flashcard.');
     }
   }
 
@@ -154,6 +173,8 @@ class _FlashcardDeckScreenState extends State<FlashcardDeckScreen> {
 
     if (confirmed == true) {
       await _provider.deleteDeck(userId, deck.id);
+      if (!mounted) return;
+      _showToast('Đã xoá bộ flashcard.');
     }
   }
 }
@@ -176,10 +197,13 @@ class _DeckCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color surface = isDark ? AppColors.darkCard : Colors.white;
-    final Color border = isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender;
+    final Color border = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.lavender;
     final Color titleColor = isDark ? AppColors.darkText : AppColors.deepPurple;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
     final Color shadow = isDark
         ? Colors.black.withValues(alpha: 0.32)
         : AppColors.deepPurple.withValues(alpha: 0.06);
@@ -239,14 +263,22 @@ class _DeckCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(total == 1 ? '1 thẻ' : '$total thẻ', style: TextStyle(color: secondaryText, fontWeight: FontWeight.w600)),
+                    Text(
+                      total == 1 ? '1 thẻ' : '$total thẻ',
+                      style: TextStyle(
+                        color: secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 8,
-                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.lavender,
+                        backgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : AppColors.lavender,
                         color: AppColors.periwinkle,
                       ),
                     ),
@@ -298,9 +330,12 @@ class _EmptyDeckState extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color surface = isDark ? AppColors.darkCard : Colors.white;
-    final Color primaryText = isDark ? AppColors.darkText : AppColors.deepPurple;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color primaryText = isDark
+        ? AppColors.darkText
+        : AppColors.deepPurple;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     return Center(
       child: Padding(
@@ -405,4 +440,3 @@ class _DeckEditorDialogState extends State<_DeckEditorDialog> {
     );
   }
 }
-

@@ -110,13 +110,17 @@ class _InboxScreenState extends State<InboxScreen> {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final Color pageBackground =
-        isDark ? AppColors.darkBackground : const Color(0xFFFCFBFF);
+    final Color pageBackground = isDark
+        ? AppColors.darkBackground
+        : const Color(0xFFFCFBFF);
     final Color surface = isDark ? AppColors.darkSurface : Colors.white;
     final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final Color searchFill = isDark ? AppColors.darkCard : const Color(0xFFF4F2FA);
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
+    final Color searchFill = isDark
+        ? AppColors.darkCard
+        : const Color(0xFFF4F2FA);
 
     if (currentUserId == null) {
       return const Scaffold(
@@ -153,7 +157,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   hintText: 'Tìm kiếm bạn học...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   filled: true,
-                    fillColor: searchFill,
+                  fillColor: searchFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -231,6 +235,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                       partnerId: item.partnerId,
                                       partnerName: item.partnerName,
                                       partnerAvatarUrl: item.partnerAvatarUrl,
+                                      partnerStatus: item.partnerStatus,
                                       initialRoomId: item.roomId,
                                     ),
                                   ),
@@ -247,7 +252,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                   children: <Widget>[
                                     CircleAvatar(
                                       radius: 25,
-                                      backgroundColor: isDark ? AppColors.darkCard : AppColors.lavender,
+                                      backgroundColor: isDark
+                                          ? AppColors.darkCard
+                                          : AppColors.lavender,
                                       backgroundImage:
                                           item.partnerAvatarUrl
                                                   ?.trim()
@@ -289,7 +296,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: unread ? primaryText : secondaryText,
+                                              color: unread
+                                                  ? primaryText
+                                                  : secondaryText,
                                               fontWeight: unread
                                                   ? FontWeight.w700
                                                   : FontWeight.w400,
@@ -371,8 +380,9 @@ class _InboxEmptyState extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color primaryText = isDark ? AppColors.darkText : AppColors.lightText;
-    final Color secondaryText =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final Color secondaryText = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -398,11 +408,7 @@ class _InboxEmptyState extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: secondaryText,
-                height: 1.4,
-              ),
+              style: TextStyle(fontSize: 13, color: secondaryText, height: 1.4),
             ),
           ],
         ),

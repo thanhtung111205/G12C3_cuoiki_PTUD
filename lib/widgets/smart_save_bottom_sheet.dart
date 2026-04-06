@@ -13,18 +13,20 @@ import '../utils/app_colors.dart';
 
 /// Shows the [SmartSaveBottomSheet] as a modal bottom sheet.
 ///
-/// [word]   – the highlighted word to look up & save
-/// [userId] – optional override; defaults to the current Firebase user
+/// [word]    – the highlighted word to look up & save
+/// [meaning] – optional translated meaning to save
+/// [userId]  – optional override; defaults to the current Firebase user
 Future<void> showSmartSaveBottomSheet(
   BuildContext context, {
   required String word,
+  String? meaning,
   String? userId,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => SmartSaveBottomSheet(word: word, userId: userId),
+    builder: (_) => SmartSaveBottomSheet(word: word, meaning: meaning, userId: userId),
   );
 }
 
@@ -35,13 +37,20 @@ Future<void> showSmartSaveBottomSheet(
 /// Premium bottom sheet for saving a highlighted word to a flashcard deck.
 ///
 /// Flow: user picks a deck  ──▶  [FirestoreService.saveWordToDeck]
-///         ├─ calls [DictionaryService.lookupWord]
+///         ├─ if meaning provided, saves it directly
+///         ├─ else calls [DictionaryService.lookupWord]
 ///         ├─ maps result → Firestore card doc
 ///         └─ atomically increments deck.cardCount
 class SmartSaveBottomSheet extends StatefulWidget {
-  const SmartSaveBottomSheet({super.key, required this.word, this.userId});
+  const SmartSaveBottomSheet({
+    super.key,
+    required this.word,
+    this.meaning,
+    this.userId,
+  });
 
   final String word;
+  final String? meaning;
   final String? userId;
 
   @override
@@ -88,6 +97,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
       await _firestoreService.saveWordToDeck(
         word: widget.word,
         deckId: deckId,
+        meaning: widget.meaning,
         userId: widget.userId,
       );
 
@@ -104,11 +114,15 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 size: 18,
               ),
               const SizedBox(width: 10),
-              Text(
-                'Đã lưu "${widget.word}" vào bộ thẻ thành công ✨',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+              Expanded(
+                child: Text(
+                  'Đã lưu "${widget.word}" vào bộ thẻ thành công ✨',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -157,6 +171,8 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
