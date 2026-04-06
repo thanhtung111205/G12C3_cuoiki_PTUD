@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/dictionary_service.dart';
 import '../translation/translation_service.dart';
-import '../models/dictionary_entry_model.dart';
 
 /// Lightweight service that orchestrates:
 ///   DictionaryService.lookupWord  ──▶  Firestore write (card + deck counter)
@@ -45,29 +44,20 @@ class FirestoreService {
     if (word.trim().isEmpty) throw Exception('Word cannot be empty');
     if (deckId.isEmpty) throw Exception('Deck ID cannot be empty');
 
-    // ── Step 1: Lookup dictionary or use provided meaning ─────────────────────────────────────────
-    late final DictionaryEntry entry;
+    // ── Step 1: Lookup dictionary ─────────────────────────────────────────
+    final entry = await _dict.lookupWord(word);
+
+    // ── Step 2: Use provided meaning if available ───────────────────────
     String finalMeaning;
     if (meaning != null && meaning.trim().isNotEmpty) {
-      // Use provided meaning, create a minimal entry
-      entry = DictionaryEntry(
-        word: word.trim(),
-        definition: meaning.trim(),
-        phonetic: '',
-        partOfSpeech: '',
-        example: '',
-        audioUrl: '',
-      );
       finalMeaning = meaning.trim();
     } else {
-      // Lookup dictionary
-      entry = await _dict.lookupWord(word);
       finalMeaning = entry.definition.trim().isEmpty
           ? '(no definition)'
           : entry.definition.trim();
     }
 
-    // ── Step 2: Handle Example & Translation ──────────────────────────────
+    // ── Step 3: Handle Example & Translation ──────────────────────────────
     String finalExample = '';
     if (entry.example.isNotEmpty) {
       try {
@@ -85,7 +75,7 @@ class FirestoreService {
       finalExample = entry.partOfSpeech.isNotEmpty ? '(${entry.partOfSpeech})' : '';
     }
 
-    // ── Step 3: Build card payload ────────────────────────────────────────
+    // ── Step 4: Build card payload ────────────────────────────────────────
     final cardData = <String, dynamic>{
       'english': entry.word.trim(),
       'meaning': finalMeaning,
@@ -100,7 +90,7 @@ class FirestoreService {
       'reviewedAt': null,
     };
 
-    // ── Step 4: Atomic write ─────────────────────────────────────────────
+    // ── Step 5: Atomic write ─────────────────────────────────────────────
     final cardRef = _cardCol(uid, deckId).doc();
     final deckRef = _deckDoc(uid, deckId);
 
