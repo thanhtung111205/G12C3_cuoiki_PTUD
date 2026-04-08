@@ -2,20 +2,15 @@
 
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/article_model.dart';
 import '../../models/bookmark_model.dart';
 import '../../screens/news/article_detail_screen.dart';
-import '../../services/news_storage_service.dart';
-import '../../services/rss_service.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/article_card.dart';
-
-// Global placeholder state (kept for compatibility with existing screens).
-final Set<String> globalReadIds = <String>{};
-final Map<String, BookmarkModel> globalBookmarks = <String, BookmarkModel>{};
+import '../../providers/news_provider.dart';
 
 class NewsTabsScreen extends StatefulWidget {
   const NewsTabsScreen({super.key});
@@ -26,133 +21,41 @@ class NewsTabsScreen extends StatefulWidget {
 
 class _NewsTabsScreenState extends State<NewsTabsScreen>
     with SingleTickerProviderStateMixin {
-  final RssService _rssService = RssService();
-  final NewsStorageService _newsStorage = NewsStorageService.instance;
-
-  Future<List<Article>>? _newsFuture;
-  StreamSubscription<Set<String>>? _readIdsSub;
-  StreamSubscription<Map<String, BookmarkModel>>? _bookmarksSub;
 
   // Search logic
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-  List<Article> _allArticles = [];
-  List<Article> _filteredArticles = [];
-
-  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _loadNews();
-    _initFirestoreSync();
-  }
-
-  void _loadNews() {
-    _newsFuture = _rssService.fetchNews().then((articles) {
-      if (mounted) {
-        setState(() {
-          _allArticles = articles;
-          _filteredArticles = articles;
-        });
-      }
-      return articles;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NewsProvider>().loadNews();
     });
   }
 
-  void _initFirestoreSync() {
-    final String? uid = _userId;
-    if (uid == null) return;
-
-    _readIdsSub = _newsStorage.getReadArticlesStream(uid).listen((ids) {
-      if (!mounted) return;
-      setState(() {
-        globalReadIds
-          ..clear()
-          ..addAll(ids);
-      });
-    });
-
-    _bookmarksSub = _newsStorage.getBookmarksStream(uid).listen((items) {
-      if (!mounted) return;
-      setState(() {
-        globalBookmarks
-          ..clear()
-          ..addAll(items);
-      });
-    });
-  }
 
   @override
   void dispose() {
-    _readIdsSub?.cancel();
-    _bookmarksSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _markAsRead(Article article) {
-    setState(() {
-      globalReadIds.add(article.articleId);
-    });
-
-    final String? uid = _userId;
-    if (uid != null) {
-      _newsStorage.markAsRead(uid, article.articleId);
-    }
-
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute<void>(
-            builder: (_) => ArticleDetailScreen(article: article),
-          ),
-        )
-        .then((_) {
-          if (mounted) setState(() {});
-        });
+    context.read<NewsProvider>().markAsRead(article);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ArticleDetailScreen(article: article),
+      ),
+    );
   }
 
   void _toggleBookmark(Article article) {
-    final String? uid = _userId;
-
-    setState(() {
-      if (globalBookmarks.containsKey(article.articleId)) {
-        globalBookmarks.remove(article.articleId);
-        if (uid != null) {
-          _newsStorage.removeBookmark(uid, article.articleId);
-        }
-      } else {
-        final BookmarkModel bmk = BookmarkModel(
-          id: article.articleId,
-          userId: uid ?? 'local_user',
-          articleId: article.articleId,
-          title: article.title,
-          source: article.source,
-          url: article.link,
-          thumbnailUrl: article.imageUrl,
-          isSaved: true,
-          savedAt: DateTime.now(),
-        );
-        globalBookmarks[article.articleId] = bmk;
-        if (uid != null) {
-          _newsStorage.addBookmark(uid, bmk);
-        }
-      }
-    });
+    context.read<NewsProvider>().toggleBookmark(article);
   }
 
   void _onSearchChanged(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredArticles = _allArticles;
-      } else {
-        _filteredArticles = _allArticles
-            .where((article) =>
-                article.title.toLowerCase().contains(query.toLowerCase()) ||
-                (article.description?.toLowerCase().contains(query.toLowerCase()) ?? false))
-            .toList();
-      }
-    });
+    context.read<NewsProvider>().search(query);
   }
 
   void _toggleSearch() {
@@ -160,7 +63,7 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
       _isSearching = !_isSearching;
       if (!_isSearching) {
         _searchController.clear();
-        _filteredArticles = _allArticles;
+        context.read<NewsProvider>().clearSearch();
       }
     });
   }
@@ -172,6 +75,8 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
     final Color bgColor = isDark
         ? AppColors.darkBackground
         : const Color(0xFFF7F5FF);
+        
+    final newsProvider = context.watch<NewsProvider>();
 
     return DefaultTabController(
       length: 2,
@@ -181,19 +86,20 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
         body: TabBarView(
           children: <Widget>[
             _NewsFeedTab(
-              newsFuture: _newsFuture,
-              articles: _filteredArticles,
-              readIds: globalReadIds,
-              bookmarks: globalBookmarks,
+              isLoading: newsProvider.isLoading,
+              errorMessage: newsProvider.errorMessage,
+              articles: newsProvider.articles,
+              readIds: newsProvider.readIds,
+              bookmarks: newsProvider.bookmarks,
               onTap: _markAsRead,
               onBookmarkToggle: _toggleBookmark,
               onRefresh: () async {
-                _loadNews();
+                await context.read<NewsProvider>().loadNews();
               },
             ),
             _BookmarksTab(
-              bookmarks: globalBookmarks,
-              readIds: globalReadIds,
+              bookmarks: newsProvider.bookmarks,
+              readIds: newsProvider.readIds,
               onTap: _markAsRead,
               onBookmarkToggle: _toggleBookmark,
             ),
@@ -270,7 +176,8 @@ class _NewsTabsScreenState extends State<NewsTabsScreen>
 
 class _NewsFeedTab extends StatelessWidget {
   const _NewsFeedTab({
-    required this.newsFuture,
+    required this.isLoading,
+    required this.errorMessage,
     required this.articles,
     required this.readIds,
     required this.bookmarks,
@@ -279,7 +186,8 @@ class _NewsFeedTab extends StatelessWidget {
     required this.onRefresh,
   });
 
-  final Future<List<Article>>? newsFuture;
+  final bool isLoading;
+  final String? errorMessage;
   final List<Article> articles;
   final Set<String> readIds;
   final Map<String, BookmarkModel> bookmarks;
@@ -289,48 +197,39 @@ class _NewsFeedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (newsFuture == null) {
+    if (isLoading && articles.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return FutureBuilder<List<Article>>(
-      future: newsFuture,
-      builder: (BuildContext context, AsyncSnapshot<List<Article>> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && articles.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (errorMessage != null && articles.isEmpty) {
+      return _ErrorView(message: errorMessage!);
+    }
 
-        if (snapshot.hasError && articles.isEmpty) {
-          return _ErrorView(message: snapshot.error.toString());
-        }
+    if (articles.isEmpty) {
+      return const _EmptyView(
+        icon: Icons.newspaper_rounded,
+        message: 'Không có bài báo nào.\nVui lòng kiểm tra kết nối mạng.',
+      );
+    }
 
-        if (articles.isEmpty) {
-          return const _EmptyView(
-            icon: Icons.newspaper_rounded,
-            message: 'Không có bài báo nào.\nVui lòng kiểm tra kết nối mạng.',
+    return RefreshIndicator(
+      color: AppColors.deepPurple,
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        physics: const BouncingScrollPhysics(),
+        itemCount: articles.length,
+        itemBuilder: (BuildContext context, int index) {
+          final Article article = articles[index];
+          return ArticleCard(
+            article: article,
+            isRead: readIds.contains(article.articleId),
+            isBookmarked: bookmarks.containsKey(article.articleId),
+            onTap: () => onTap(article),
+            onBookmarkToggle: () => onBookmarkToggle(article),
           );
-        }
-
-        return RefreshIndicator(
-          color: AppColors.deepPurple,
-          onRefresh: onRefresh,
-          child: ListView.builder(
-            padding: const EdgeInsets.only(top: 8, bottom: 24),
-            physics: const BouncingScrollPhysics(),
-            itemCount: articles.length,
-            itemBuilder: (BuildContext context, int index) {
-              final Article article = articles[index];
-              return ArticleCard(
-                article: article,
-                isRead: readIds.contains(article.articleId),
-                isBookmarked: bookmarks.containsKey(article.articleId),
-                onTap: () => onTap(article),
-                onBookmarkToggle: () => onBookmarkToggle(article),
-              );
-            },
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 }
