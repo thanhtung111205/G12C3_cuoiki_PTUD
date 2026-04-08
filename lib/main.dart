@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'services/location_cleanup_service.dart';
 import 'screens/auth/login_register_screen.dart';
 import 'screens/home/home_dashboard_screen.dart';
 import 'utils/app_colors.dart';
@@ -32,16 +33,88 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(
     ThemeMode.light,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    // Lắng nghe các thay đổi app lifecycle
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    // Xóa listener khi MyApp bị hủy
+    WidgetsBinding.instance.removeObserver(this);
+    _themeModeNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    debugPrint('[AppLifecycle] State changed: $state');
+
+    switch (state) {
+      case AppLifecycleState.detached:
+        // App đã bị tắt hoàn toàn - xóa vị trí khỏi Firebase
+        debugPrint('[AppLifecycle] DETACHED: App is being terminated');
+        _clearUserLocation(currentUser.uid);
+        break;
+      case AppLifecycleState.paused:
+        // App chuyển sang background - XÓA vị trí vì không biết khi nào sẽ mở lại
+        // Cách này bảo đảm vị trí sẽ bị xóa ngay khi user tắt app
+        debugPrint('[AppLifecycle] PAUSED: App entered background');
+        _clearUserLocation(currentUser.uid);
+        break;
+      case AppLifecycleState.resumed:
+        // App quay trở lại foreground - NearbyMapScreen sẽ tự cập nhật vị trí
+        debugPrint('[AppLifecycle] RESUMED: App came to foreground');
+        break;
+      case AppLifecycleState.inactive:
+        // App đang chuyển đổi trạng thái
+        debugPrint('[AppLifecycle] INACTIVE: App transitioning');
+        break;
+      case AppLifecycleState.hidden:
+        // App được ẩn nhưng không bị tắt (Android 12+)
+        debugPrint('[AppLifecycle] HIDDEN: App is hidden');
+        break;
+    }
+  }
+
+  /// Xóa vị trí người dùng khỏi Firebase khi app tắt
+  /// Gọi đồng bộ và không đợi kết quả để tránh delay
+  Future<void> _clearUserLocation(String userId) async {
+    try {
+      debugPrint('[AppLifecycle] Attempting to clear location for user: $userId');
+
+      // Dùng LocationCleanupService với async=true khi app đóng
+      // (Fire and forget - không đợi kết quả)
+      await LocationCleanupService().clearUserLocation(
+        userId,
+        async: true, // Fire and forget - không block app shutdown
+      );
+
+      debugPrint('[AppLifecycle] ✅ Location clear initiated');
+    } catch (error) {
+      debugPrint('[AppLifecycle] ❌ Lỗi xóa vị trí: $error');
+      // Bỏ qua lỗi - không ảnh hưởng đến app shutdown
+    }
+  }
 
   void _toggleTheme() {
     _themeModeNotifier.value = _themeModeNotifier.value == ThemeMode.light
         ? ThemeMode.dark
         : ThemeMode.light;
   }
+
 
   ThemeData _buildLightTheme() {
     final ColorScheme colorScheme =
@@ -102,11 +175,6 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  @override
-  void dispose() {
-    _themeModeNotifier.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {

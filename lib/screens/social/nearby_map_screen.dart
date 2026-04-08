@@ -54,9 +54,13 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   @override
   void dispose() {
+    // Hủy các subscriptions
     _positionSubscription?.cancel();
     _visibleUsersSubscription?.cancel();
     _currentUserSubscription?.cancel();
+    
+    // Lưu ý: Chúng tôi NOT xóa vị trí ở đây vì người dùng có thể 
+    // quay lại màn hình này. Chỉ xóa khi app thực sự tắt (xem main.dart)
     super.dispose();
   }
 
@@ -163,6 +167,9 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     final data = doc.data();
     final double? latitude = _readDouble(data['latitude']);
     final double? longitude = _readDouble(data['longitude']);
+
+    // Nếu vị trí là null, đồng nghĩa app của người này đã tắt và vị trí bị xóa
+    // Không hiển thị người dùng này trên bản đồ
     if (latitude == null || longitude == null) return null;
 
     return NearbyStudyPeer(
