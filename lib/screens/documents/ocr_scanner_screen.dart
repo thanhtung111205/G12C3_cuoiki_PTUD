@@ -165,7 +165,7 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
           ? const Color(0xFF101014)
           : const Color(0xFFF0EEF8),
       extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(isDark, hasImage),
       body: Column(
         children: <Widget>[
           // ── Flex 6 – Vùng ảnh / placeholder ───────────────────────────────
@@ -196,20 +196,37 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
     );
   }
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(bool isDark, bool hasImage) {
+    final Color iconColor = hasImage
+        ? Colors.white
+        : (isDark ? AppColors.darkText : AppColors.lightText);
+
+    final Color textColor = hasImage
+        ? Colors.white
+        : (isDark ? AppColors.darkText : AppColors.deepPurple);
+
     return AppBar(
-      backgroundColor: Colors.transparent,
+      backgroundColor: hasImage ? Colors.black.withValues(alpha: 0.25) : Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, color: iconColor),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      title: const Text(
+      title: Text(
         'Quét tài liệu',
         style: TextStyle(
-          color: Colors.white,
+          color: textColor,
           fontWeight: FontWeight.w800,
           fontSize: 18,
+          shadows: hasImage
+              ? const <Shadow>[
+                  Shadow(
+                    color: Colors.black45,
+                    blurRadius: 6,
+                    offset: Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
       ),
       centerTitle: true,
