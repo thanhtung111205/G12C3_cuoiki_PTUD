@@ -90,22 +90,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   /// Xóa vị trí người dùng khỏi Firebase khi app tắt
-  /// Gọi đồng bộ và không đợi kết quả để tránh delay
+  /// Sử dụng Firebase Realtime Database + Firestore
+  /// Realtime DB sẽ tự động xóa nếu connection mất (onDisconnect handler)
   Future<void> _clearUserLocation(String userId) async {
     try {
       debugPrint('[AppLifecycle] Attempting to clear location for user: $userId');
 
-      // Dùng LocationCleanupService với async=true khi app đóng
-      // (Fire and forget - không đợi kết quả)
+      // Xóa trực tiếp từ Realtime Database (nhanh - 100-300ms)
+      // This is the primary removal method
+      await LocationRealtimeService().removeLocationImmediately(userId);
+
+      // Cũng xóa từ Firestore cho compatibility
+      // This is backup for existing queries
       await LocationCleanupService().clearUserLocation(
         userId,
-        async: true, // Fire and forget - không block app shutdown
+        async: true, // Fire and forget
       );
 
       debugPrint('[AppLifecycle] ✅ Location clear initiated');
     } catch (error) {
       debugPrint('[AppLifecycle] ❌ Lỗi xóa vị trí: $error');
-      // Bỏ qua lỗi - không ảnh hưởng đến app shutdown
+      // Không throw - app shutdown không bị block
     }
   }
 

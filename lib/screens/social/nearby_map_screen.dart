@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +9,7 @@ import 'package:latlong2/latlong.dart' as latlng;
 
 import '../../models/nearby_study_peer.dart';
 import '../../services/location_service.dart';
+import '../../services/location_cleanup_service.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/nearby_map_widgets.dart';
 import 'chat_room_screen.dart';
@@ -34,6 +36,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
   _visibleUsersSubscription;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _currentUserSubscription;
+  StreamSubscription<DatabaseEvent>? _realtimeRemovalSubscription;
 
   Position? _currentPosition;
   List<NearbyStudyPeer> _visiblePeers = <NearbyStudyPeer>[];
@@ -54,13 +57,10 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   @override
   void dispose() {
-    // Hủy các subscriptions
     _positionSubscription?.cancel();
     _visibleUsersSubscription?.cancel();
     _currentUserSubscription?.cancel();
-    
-    // Lưu ý: Chúng tôi NOT xóa vị trí ở đây vì người dùng có thể 
-    // quay lại màn hình này. Chỉ xóa khi app thực sự tắt (xem main.dart)
+    _realtimeRemovalSubscription?.cancel();
     super.dispose();
   }
 
@@ -83,14 +83,17 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     try {
       final position = await _locationService.getCurrentPosition();
       _currentPosition = position;
-      await _publishCurrentLocation(position);
-      _bindRealtimeStreams();
-      _recalculateNearbyPeers();
-
+      
+      // Hide loading IMMEDIATELY after getting position
       _safeSetState(() {
         _isLoading = false;
       });
       _moveMapToCurrentPosition();
+      
+      // Publish location and bind streams in parallel (don't wait)
+      // This way map loads instantly
+      _publishCurrentLocation(position);
+      _bindRealtimeStreams();
     } catch (error) {
       _safeSetState(() {
         _isLoading = false;
@@ -101,22 +104,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
   }
 
   void _bindRealtimeStreams() {
-    _currentUserSubscription = _firestore
-        .collection('users')
-        .doc(widget.currentUserId)
-        .snapshots()
-        .listen((snapshot) {
-          final data = snapshot.data();
-          if (data == null) return;
-
-          final bool visible = (data['isLocationVisible'] as bool?) ?? true;
-          if (visible != _isLocationVisible) {
-            _safeSetState(() {
-              _isLocationVisible = visible;
-            });
-          }
-        });
-
+    // Simple query to get visible users
     _visibleUsersSubscription = _firestore
         .collection('users')
         .where('isLocationVisible', isEqualTo: true)
@@ -133,20 +121,17 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
             _recalculateNearbyPeers();
           },
           onError: (error) {
-            _safeSetState(() {
-              _statusMessage =
-                  'Không thể đồng bộ danh sách bạn học gần đây: $error';
-            });
+            debugPrint('[NearbyMap] Error: $error');
           },
         );
 
+    // Watch position and update location
     _positionSubscription = _locationService.watchPosition().listen((
       position,
     ) async {
       _currentPosition = position;
       await _publishCurrentLocation(position);
       _recalculateNearbyPeers();
-
       _moveMapToCurrentPosition();
     });
   }
@@ -167,9 +152,6 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
     final data = doc.data();
     final double? latitude = _readDouble(data['latitude']);
     final double? longitude = _readDouble(data['longitude']);
-
-    // Nếu vị trí là null, đồng nghĩa app của người này đã tắt và vị trí bị xóa
-    // Không hiển thị người dùng này trên bản đồ
     if (latitude == null || longitude == null) return null;
 
     return NearbyStudyPeer(
@@ -221,6 +203,16 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   Future<void> _publishCurrentLocation(Position position) async {
     try {
+      // Publish to Realtime Database (primary - faster)
+      // Also sets up onDisconnect handler for crash/force kill
+      await LocationRealtimeService().publishLocation(
+        widget.currentUserId,
+        position.latitude,
+        position.longitude,
+        position.accuracy,
+      );
+
+      // Also update Firestore for backward compatibility
       await _firestore
           .collection('users')
           .doc(widget.currentUserId)
@@ -231,7 +223,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
             'lastUpdated': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     } catch (_) {
-      // Firestore write failures should not block map rendering.
+      // Firestore write failures should not block map rendering
     }
   }
 

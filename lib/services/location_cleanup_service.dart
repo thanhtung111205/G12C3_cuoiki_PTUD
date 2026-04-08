@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 
 /// LocationCleanupService
@@ -164,3 +165,87 @@ class LocationCleanupService {
   }
 }
 
+/// LocationRealtimeService - Firebase Realtime Database handler
+/// Uses onDisconnect().remove() for automatic cleanup on connection loss
+class LocationRealtimeService {
+  static final LocationRealtimeService _instance =
+      LocationRealtimeService._internal();
+
+  factory LocationRealtimeService() => _instance;
+
+  LocationRealtimeService._internal();
+
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+
+  /// Initialize location node with onDisconnect handler
+  /// Call this when app starts / user comes online
+  Future<void> initializeLocationNode(String userId) async {
+    try {
+      debugPrint('[LocationRT] Setting up onDisconnect for user: $userId');
+
+      final locationRef = _database.ref('users/$userId/location');
+
+      // Setup automatic removal when connection is lost
+      // This handles crash/force kill cases
+      await locationRef.onDisconnect().remove();
+
+      debugPrint('[LocationRT] ✅ onDisconnect handler configured');
+    } catch (e) {
+      debugPrint('[LocationRT] ❌ Error setting onDisconnect: $e');
+    }
+  }
+
+  /// Publish location continuously (called by watchPosition)
+  Future<void> publishLocation(String userId, double latitude,
+      double longitude, double accuracy) async {
+    try {
+      final locationRef = _database.ref('users/$userId/location');
+
+      await locationRef.set({
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracy': accuracy,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'status': 'online',
+        'updatedAt': ServerValue.timestamp,
+      });
+
+      // Re-setup onDisconnect on every update
+      await locationRef.onDisconnect().remove();
+    } catch (e) {
+      debugPrint('[LocationRT] ❌ Error publishing location: $e');
+    }
+  }
+
+  /// Immediately remove location when app closes
+  /// Called on AppLifecycleState.paused and detached
+  Future<void> removeLocationImmediately(String userId) async {
+    try {
+      debugPrint('[LocationRT] Removing location immediately for: $userId');
+
+      final locationRef = _database.ref('users/$userId/location');
+
+      await locationRef.remove().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('[LocationRT] Remove timeout - trying again');
+          return locationRef.remove();
+        },
+      );
+
+      debugPrint('[LocationRT] ✅ Location removed');
+    } catch (e) {
+      debugPrint('[LocationRT] ❌ Error removing location: $e');
+    }
+  }
+
+  /// Get reference to user's location node
+  DatabaseReference getLocationRef(String userId) {
+    return _database.ref('users/$userId/location');
+  }
+
+  /// Get reference to all users (for listening)
+  DatabaseReference getUsersRef() {
+    return _database.ref('users');
+  }
+}
