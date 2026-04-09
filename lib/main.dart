@@ -4,11 +4,21 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/location_cleanup_service.dart';
+import 'package:provider/provider.dart';
+
 import 'screens/auth/login_register_screen.dart';
 import 'screens/home/home_dashboard_screen.dart';
 import 'utils/app_colors.dart';
 import 'firebase_options.dart';
 import 'translation/translation_demo_screen.dart';
+
+import 'providers/auth_provider.dart';
+import 'providers/news_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/chat_provider.dart';
+import 'providers/document_provider.dart';
+import 'providers/flashcard_provider.dart';
+import 'providers/location_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +33,20 @@ Future<void> main() async {
     // We still continue to runApp, screens will handle missing Firebase state
   }
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => NewsProvider()),
+        ChangeNotifierProvider.value(value: ChatProvider.instance),
+        ChangeNotifierProvider.value(value: DocumentProvider.instance),
+        ChangeNotifierProvider.value(value: FlashcardProvider.instance),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -121,6 +144,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
 
+class _MyAppState extends State<MyApp> {
   ThemeData _buildLightTheme() {
     final ColorScheme colorScheme =
         ColorScheme.fromSeed(
@@ -183,36 +207,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: _themeModeNotifier,
-      builder: (context, themeMode, _) {
-        return MaterialApp(
-          title: 'Smart Document & Vocab',
-          debugShowCheckedModeBanner: false,
-          theme: _buildLightTheme(),
-          darkTheme: _buildDarkTheme(),
-          themeMode: themeMode,
-          // App home — use auth state to pick Home or Auth screen.
-          home: StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (snapshot.hasData) {
-                return HomeScreen(
-                  isDarkMode: themeMode == ThemeMode.dark,
-                  onToggleTheme: _toggleTheme,
-                );
-              }
-              return const AuthScreen();
-            },
-          ),
-          routes: {'/translate_demo': (_) => const TranslationDemoScreen()},
-        );
-      },
+    final themeProvider = context.watch<ThemeProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    
+    // Sync other providers that need auth context
+    final user = authProvider.user;
+    context.read<NewsProvider>().syncForUser(user?.uid);
+    // You could also sync ChatProvider/DocumentProvider here if they had similar syncForUser method, but currently only NewsProvider and FlashcardProvider have it.
+    context.read<FlashcardProvider>().syncForUser(user?.uid);
+
+    return MaterialApp(
+      title: 'Smart Document & Vocab',
+      debugShowCheckedModeBanner: false,
+      theme: _buildLightTheme(),
+      darkTheme: _buildDarkTheme(),
+      themeMode: themeProvider.themeMode,
+      home: authProvider.isLoading
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : authProvider.isAuthenticated
+              ? HomeScreen(
+                  isDarkMode: themeProvider.isDarkMode,
+                  onToggleTheme: themeProvider.toggleTheme,
+                )
+              : const AuthScreen(),
+      routes: {'/translate_demo': (_) => const TranslationDemoScreen()},
     );
   }
 }

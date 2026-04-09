@@ -7,10 +7,8 @@ import '../../utils/app_colors.dart';
 import '../../translation/context_translation_widget.dart';
 import '../../translation/translation_service.dart';
 import '../../translation/translation_viewmodel.dart';
-import '../../models/bookmark_model.dart';
-import '../../services/news_storage_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'news_tabs_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/news_provider.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   const ArticleDetailScreen({super.key, required this.article});
@@ -22,14 +20,11 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  // ── Local state ───────────────────────────────────────────────────────────
-  late bool _isBookmarked;
   late final TranslationViewModel _translationViewModel;
 
   @override
   void initState() {
     super.initState();
-    _isBookmarked = globalBookmarks.containsKey(widget.article.articleId);
     _translationViewModel = TranslationViewModel(
       service: TranslationService(
         endpoint: 'https://api.mymemory.translated.net/get',
@@ -99,51 +94,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         ),
         actions: [
           // Bookmark toggle
-          IconButton(
-            icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              transitionBuilder: (child, anim) =>
-                  ScaleTransition(scale: anim, child: child),
-              child: Icon(
-                _isBookmarked
-                    ? Icons.bookmark_rounded
-                    : Icons.bookmark_border_rounded,
-                key: ValueKey<bool>(_isBookmarked),
-                color: _isBookmarked ? AppColors.deepPurple : textSecondary,
-                size: 24,
-              ),
-            ),
-            onPressed: () {
-              setState(() {
-                _isBookmarked = !_isBookmarked;
-                final uid = FirebaseAuth.instance.currentUser?.uid;
-
-                if (_isBookmarked) {
-                  final bmk = BookmarkModel(
-                    id: widget.article.articleId,
-                    userId: uid ?? 'local_user',
-                    articleId: widget.article.articleId,
-                    title: widget.article.title,
-                    source: widget.article.source,
-                    url: widget.article.link,
-                    thumbnailUrl: widget.article.imageUrl,
-                    isSaved: true,
-                    savedAt: DateTime.now(),
-                  );
-                  globalBookmarks[widget.article.articleId] = bmk;
-                  if (uid != null) {
-                    NewsStorageService.instance.addBookmark(uid, bmk);
-                  }
-                } else {
-                  globalBookmarks.remove(widget.article.articleId);
-                  if (uid != null) {
-                    NewsStorageService.instance.removeBookmark(
-                      uid,
-                      widget.article.articleId,
-                    );
-                  }
-                }
-              });
+          Consumer<NewsProvider>(
+            builder: (context, newsProvider, child) {
+              final isBookmarked = newsProvider.bookmarks.containsKey(widget.article.articleId);
+              return IconButton(
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, anim) =>
+                      ScaleTransition(scale: anim, child: child),
+                  child: Icon(
+                    isBookmarked
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    key: ValueKey<bool>(isBookmarked),
+                    color: isBookmarked ? AppColors.deepPurple : textSecondary,
+                    size: 24,
+                  ),
+                ),
+                onPressed: () {
+                  newsProvider.toggleBookmark(widget.article);
+                },
+              );
             },
           ),
           const SizedBox(width: 4),
